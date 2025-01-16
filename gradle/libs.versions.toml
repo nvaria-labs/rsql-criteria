@@ -1,0 +1,28 @@
+[versions]
+
+junit5 = "5.11.4"
+mockito ="5.15.2"
+instancio ="5.1.0"
+antlr = "4.13.2"
+hamcrest ="3.0"
+hamcrestdate="2.0.8"
+
+
+[libraries]
+
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit5" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit5" }
+
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+
+instancio-core = { module = "org.instancio:instancio-core", version.ref = "instancio" }
+instancio-junit = { module = "org.instancio:instancio-junit", version.ref = "instancio" }
+
+antlr-v4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
+antlr-v4 = { module = "org.antlr:antlr4", version.ref = "antlr" }
+
+hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
+hamcrest-date = { module = "org.exparity:hamcrest-date", version.ref = "hamcrestdate" }
