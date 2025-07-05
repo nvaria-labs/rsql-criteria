@@ -1,20 +1,74 @@
 plugins {
     `java-library`
     idea
-    id("com.github.ben-manes.versions") version "0.51.0"
+    id("com.github.ben-manes.versions") version "0.52.0"
     id("org.barfuin.gradle.jacocolog") version "3.1.0"
+    id("io.github.simonhauck.release") version "1.4.0"
     `maven-publish`
     jacoco
     antlr
 }
 
 group = "ch.nvaria"
-version = "1.0-SNAPSHOT"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
     withSourcesJar()
+}
+
+release {
+    checkForPreReleaseVersions.set(false)
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "ch.nvaria"
+            artifactId = "rest-sql"
+
+            from(components["java"])
+            pom {
+                name.set("rest-sql")
+                description.set("A Library to parse rsql")
+                url.set("")
+
+                licenses {
+                    license {
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("tm")
+                        name.set("Thomas Müllerleile")
+                        email.set("thomas.muellerleile@nvaria.ch")
+                    }
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = "maven-snapshots"
+                url = uri(System.getenv("NEXUS_MVN_SNAPSHOTS"))
+                credentials {
+                    username = System.getenv("NEXUS_USER")
+                    password = System.getenv("NEXUS_PW")
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = "maven-release"
+                url = uri(System.getenv("NEXUS_MVN_RELEASE"))
+                credentials {
+                    username = System.getenv("NEXUS_USER")
+                    password = System.getenv("NEXUS_PW")
+                }
+            }
+        }
+    }
 }
 
 
@@ -40,6 +94,8 @@ dependencies {
     testImplementation(libs.junit.jupiter.params)
     testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
+
 }
 
 tasks.named<Test>("test") {

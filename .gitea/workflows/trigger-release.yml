@@ -1,0 +1,52 @@
+name: Trigger Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-version:
+        description: 'The version with which the code should be released'
+        type: string
+        required: true
+      post-release-version:
+        description: 'The next snapshot version'
+        type: string
+        required: true
+
+env:
+  inputs_release-version:              ${{ inputs.release-version }}
+  inputs_post-release-version:         ${{ inputs.post-release-version }}
+
+jobs:
+  trigger-release:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.nvaria.cloud/catthehacker/ubuntu:act-latest
+      credentials:
+        username: ${{ vars.DOCKERUSER }}
+        password: ${{ vars.DOCKERPW }}
+    env:
+      RUNNER_TOOL_CACHE: /toolcache
+      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE  }}
+      NEXUS_MVN_SNAPSHOTS: ${{ vars.NEXUS_MVN_SNAPSHOTS }}
+      NEXUS_USER: ${{ vars.DOCKERUSER }}
+      NEXUS_PW: ${{ vars.DOCKERPW }}
+    name: Trigger the release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ vars.PAT}}
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          id: 'java'
+          cache: 'gradle'
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Set Git User and Email
+        run: |
+          git config --global user.email "gitea@nvaria.cloud"
+          git config --global user.name "Gitea Action"
+      - name: Run gradle release task
+        run: ./gradlew release -PreleaseVersion=${{ inputs.release-version }} -PpostReleaseVersion=${{ inputs.post-release-version }}
+
