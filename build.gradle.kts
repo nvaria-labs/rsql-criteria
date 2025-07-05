@@ -1,15 +1,22 @@
+import io.github.simonhauck.release.version.api.Version
+
 plugins {
     `java-library`
     idea
     id("com.github.ben-manes.versions") version "0.52.0"
     id("org.barfuin.gradle.jacocolog") version "3.1.0"
     id("io.github.simonhauck.release") version "1.4.0"
+    id("org.spdx.sbom") version "0.9.0"
+    id("dev.yumi.gradle.licenser") version "2.1.1"
     `maven-publish`
     jacoco
     antlr
 }
 
-group = "ch.nvaria"
+group = "ch.nvaria.rsql"
+
+val versionFile = layout.settingsDirectory.file("version.properties").asFile
+version =  Version.fromPropertiesFile(versionFile)
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -24,12 +31,12 @@ release {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "ch.nvaria"
-            artifactId = "rest-sql"
+            groupId = "ch.nvaria.rsql"
+            artifactId = "rsql-parser"
 
             from(components["java"])
             pom {
-                name.set("rest-sql")
+                name.set("rsql-parser")
                 description.set("A Library to parse rsql")
                 url.set("")
 
@@ -130,4 +137,42 @@ tasks.jacocoTestReport {
             exclude("ch/nvaria/generated/*")
         }
     )
+}
+
+spdxSbom {
+    targets {
+
+        create("release") {
+            outputFile.set(layout.buildDirectory.file("release.spdx.json"))
+            description = "This library can be used to easily access bpmn models"
+
+            scm {
+                uri.set("https://nexus.nvaria.cloud")
+                if (project.hasProperty("spdxRevision")) {
+                    revision.set(project.property("spdxRevision").toString())
+                }
+            }
+            document {
+                name.set("Impulse Model BPMN")
+                creator.set("Organization: Nvaria GmbH")
+                namespace.set("https://nvaria.ch/spdx/1234-5678-9632-7412")
+                packageSupplier.set("Organization: Nvaria GmbH")
+            }
+
+        }
+    }
+}
+
+
+license {
+    // Add a license header rule, at least one must be present.
+    rule(file("codeformat/ASF-2.0"))
+
+    // Exclude/include certain file types, defaults are provided to easily deal with Java/Kotlin projects.
+    include("src/main/java/visitor/*.java") // Include Java files into the file resolution.
+    exclude("**/*.properties") // Exclude properties files from the file resolution.
+    exclude("src/main/java/ch/nvaria/generated/*")
+    exclude("src/main/java/antlr/*")
+    include("**/*.java")
+
 }
