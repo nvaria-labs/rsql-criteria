@@ -120,6 +120,7 @@ tasks.generateGrammarSource {
 }
 
 tasks.named("test").configure { dependsOn("jar") }
+tasks.named("checkLicenseMain").configure { dependsOn("generateGrammarSource") }
 
 tasks.test {
     finalizedBy(tasks.jacocoTestReport) // report is always generated after tests run
@@ -173,6 +174,4 @@ license {
     exclude("**/*.properties") // Exclude properties files from the file resolution.
     exclude("src/main/java/ch/nvaria/generated/*")
     exclude("src/main/java/antlr/*")
-    include("**/*.java")
-
 }
