@@ -36,6 +36,10 @@ publishing {
             artifactId = "rsql-criteria"
 
             from(components["java"])
+            artifact(layout.buildDirectory.file("release.spdx.json")) {
+                classifier = "sbom"
+                extension  = "spdx.json"
+            }
             pom {
                 name.set("rsql-criteria")
                 description.set("A Library to parse rsql and create criteria API predicates")
@@ -126,6 +130,17 @@ tasks.generateGrammarSource {
 
 tasks.named<Jar>("sourcesJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named<Jar>("jar") {
+    dependsOn("spdxSbomForRelease")
+    from(layout.buildDirectory.file("release.spdx.json")) {
+        into("META-INF/sbom")
+    }
+}
+
+tasks.withType<AbstractPublishToMaven>().configureEach {
+    dependsOn("spdxSbomForRelease")
 }
 
 tasks.named("test").configure { dependsOn("jar") }
