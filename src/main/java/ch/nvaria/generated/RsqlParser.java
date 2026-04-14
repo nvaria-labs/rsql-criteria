@@ -1,19 +1,3 @@
-/*
- * Copyright 2024 Nvaria GmbH.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 // Generated from RsqlParser.g4 by ANTLR 4.13.2
 package ch.nvaria.generated;
 import org.antlr.v4.runtime.atn.*;
@@ -34,7 +18,8 @@ public class RsqlParser extends Parser {
 		new PredictionContextCache();
 	public static final int
 		SKIP0=1, SKIP1=2, UNRESERVED_STR=3, SINGLE_QUOTED_STR=4, DOUBLE_QUOTED_STR=5, 
-		AND=6, OR=7, LPAREN=8, RPAREN=9, COMP_FIQL=10, COMP_ALT=11;
+		SEMICOLON=6, AND=7, COMMA=8, OR=9, LPAREN=10, RPAREN=11, COMP_FIQL=12, 
+		COMP_ALT=13;
 	public static final int
 		RULE_input = 0, RULE_or = 1, RULE_and = 2, RULE_constraint = 3, RULE_group = 4, 
 		RULE_comparison = 5, RULE_selector = 6, RULE_operator = 7, RULE_arguments = 8, 
@@ -49,14 +34,15 @@ public class RsqlParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, "' '", "'\\t'", null, null, null, null, null, "'('", "')'"
+			null, "' '", "'\\t'", null, null, null, "';'", "' and '", "','", "' or '", 
+			"'('", "')'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
 			null, "SKIP0", "SKIP1", "UNRESERVED_STR", "SINGLE_QUOTED_STR", "DOUBLE_QUOTED_STR", 
-			"AND", "OR", "LPAREN", "RPAREN", "COMP_FIQL", "COMP_ALT"
+			"SEMICOLON", "AND", "COMMA", "OR", "LPAREN", "RPAREN", "COMP_FIQL", "COMP_ALT"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -170,6 +156,10 @@ public class RsqlParser extends Parser {
 		public TerminalNode OR(int i) {
 			return getToken(RsqlParser.OR, i);
 		}
+		public List<TerminalNode> COMMA() { return getTokens(RsqlParser.COMMA); }
+		public TerminalNode COMMA(int i) {
+			return getToken(RsqlParser.COMMA, i);
+		}
 		public OrContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -201,11 +191,19 @@ public class RsqlParser extends Parser {
 			setState(30);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (_la==OR) {
+			while (_la==COMMA || _la==OR) {
 				{
 				{
 				setState(26);
-				match(OR);
+				_la = _input.LA(1);
+				if ( !(_la==COMMA || _la==OR) ) {
+				_errHandler.recoverInline(this);
+				}
+				else {
+					if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
+					_errHandler.reportMatch(this);
+					consume();
+				}
 				setState(27);
 				and();
 				}
@@ -239,6 +237,10 @@ public class RsqlParser extends Parser {
 		public TerminalNode AND(int i) {
 			return getToken(RsqlParser.AND, i);
 		}
+		public List<TerminalNode> SEMICOLON() { return getTokens(RsqlParser.SEMICOLON); }
+		public TerminalNode SEMICOLON(int i) {
+			return getToken(RsqlParser.SEMICOLON, i);
+		}
 		public AndContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -270,11 +272,19 @@ public class RsqlParser extends Parser {
 			setState(38);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (_la==AND) {
+			while (_la==SEMICOLON || _la==AND) {
 				{
 				{
 				setState(34);
-				match(AND);
+				_la = _input.LA(1);
+				if ( !(_la==SEMICOLON || _la==AND) ) {
+				_errHandler.recoverInline(this);
+				}
+				else {
+					if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
+					_errHandler.reportMatch(this);
+					consume();
+				}
 				setState(35);
 				constraint();
 				}
@@ -642,9 +652,9 @@ public class RsqlParser extends Parser {
 		public ArgumentContext argument(int i) {
 			return getRuleContext(ArgumentContext.class,i);
 		}
-		public List<TerminalNode> OR() { return getTokens(RsqlParser.OR); }
-		public TerminalNode OR(int i) {
-			return getToken(RsqlParser.OR, i);
+		public List<TerminalNode> COMMA() { return getTokens(RsqlParser.COMMA); }
+		public TerminalNode COMMA(int i) {
+			return getToken(RsqlParser.COMMA, i);
 		}
 		public CommaSepArgumentsContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -677,11 +687,11 @@ public class RsqlParser extends Parser {
 			setState(69);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (_la==OR) {
+			while (_la==COMMA) {
 				{
 				{
 				setState(65);
-				match(OR);
+				match(COMMA);
 				setState(66);
 				argument();
 				}
@@ -775,7 +785,7 @@ public class RsqlParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001\u000bM\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
+		"\u0004\u0001\rM\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
 		"\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002"+
 		"\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0002\u0007\u0007\u0007\u0002"+
 		"\b\u0007\b\u0002\t\u0007\t\u0002\n\u0007\n\u0001\u0000\u0001\u0000\u0001"+
@@ -787,36 +797,36 @@ public class RsqlParser extends Parser {
 		"\u0001\u0007\u0001\b\u0001\b\u0001\b\u0001\b\u0001\b\u0003\b?\b\b\u0001"+
 		"\t\u0001\t\u0001\t\u0005\tD\b\t\n\t\f\tG\t\t\u0001\n\u0001\n\u0003\nK"+
 		"\b\n\u0001\n\u0000\u0000\u000b\u0000\u0002\u0004\u0006\b\n\f\u000e\u0010"+
-		"\u0012\u0014\u0000\u0002\u0001\u0000\n\u000b\u0001\u0000\u0004\u0005G"+
-		"\u0000\u0016\u0001\u0000\u0000\u0000\u0002\u0019\u0001\u0000\u0000\u0000"+
-		"\u0004!\u0001\u0000\u0000\u0000\u0006+\u0001\u0000\u0000\u0000\b-\u0001"+
-		"\u0000\u0000\u0000\n1\u0001\u0000\u0000\u0000\f5\u0001\u0000\u0000\u0000"+
-		"\u000e7\u0001\u0000\u0000\u0000\u0010>\u0001\u0000\u0000\u0000\u0012@"+
-		"\u0001\u0000\u0000\u0000\u0014J\u0001\u0000\u0000\u0000\u0016\u0017\u0003"+
-		"\u0002\u0001\u0000\u0017\u0018\u0005\u0000\u0000\u0001\u0018\u0001\u0001"+
-		"\u0000\u0000\u0000\u0019\u001e\u0003\u0004\u0002\u0000\u001a\u001b\u0005"+
-		"\u0007\u0000\u0000\u001b\u001d\u0003\u0004\u0002\u0000\u001c\u001a\u0001"+
-		"\u0000\u0000\u0000\u001d \u0001\u0000\u0000\u0000\u001e\u001c\u0001\u0000"+
-		"\u0000\u0000\u001e\u001f\u0001\u0000\u0000\u0000\u001f\u0003\u0001\u0000"+
-		"\u0000\u0000 \u001e\u0001\u0000\u0000\u0000!&\u0003\u0006\u0003\u0000"+
-		"\"#\u0005\u0006\u0000\u0000#%\u0003\u0006\u0003\u0000$\"\u0001\u0000\u0000"+
-		"\u0000%(\u0001\u0000\u0000\u0000&$\u0001\u0000\u0000\u0000&\'\u0001\u0000"+
-		"\u0000\u0000\'\u0005\u0001\u0000\u0000\u0000(&\u0001\u0000\u0000\u0000"+
-		"),\u0003\b\u0004\u0000*,\u0003\n\u0005\u0000+)\u0001\u0000\u0000\u0000"+
-		"+*\u0001\u0000\u0000\u0000,\u0007\u0001\u0000\u0000\u0000-.\u0005\b\u0000"+
-		"\u0000./\u0003\u0002\u0001\u0000/0\u0005\t\u0000\u00000\t\u0001\u0000"+
-		"\u0000\u000012\u0003\f\u0006\u000023\u0003\u000e\u0007\u000034\u0003\u0010"+
-		"\b\u00004\u000b\u0001\u0000\u0000\u000056\u0005\u0003\u0000\u00006\r\u0001"+
-		"\u0000\u0000\u000078\u0007\u0000\u0000\u00008\u000f\u0001\u0000\u0000"+
-		"\u00009:\u0005\b\u0000\u0000:;\u0003\u0012\t\u0000;<\u0005\t\u0000\u0000"+
-		"<?\u0001\u0000\u0000\u0000=?\u0003\u0014\n\u0000>9\u0001\u0000\u0000\u0000"+
-		">=\u0001\u0000\u0000\u0000?\u0011\u0001\u0000\u0000\u0000@E\u0003\u0014"+
-		"\n\u0000AB\u0005\u0007\u0000\u0000BD\u0003\u0014\n\u0000CA\u0001\u0000"+
-		"\u0000\u0000DG\u0001\u0000\u0000\u0000EC\u0001\u0000\u0000\u0000EF\u0001"+
-		"\u0000\u0000\u0000F\u0013\u0001\u0000\u0000\u0000GE\u0001\u0000\u0000"+
-		"\u0000HK\u0005\u0003\u0000\u0000IK\u0007\u0001\u0000\u0000JH\u0001\u0000"+
-		"\u0000\u0000JI\u0001\u0000\u0000\u0000K\u0015\u0001\u0000\u0000\u0000"+
-		"\u0006\u001e&+>EJ";
+		"\u0012\u0014\u0000\u0004\u0001\u0000\b\t\u0001\u0000\u0006\u0007\u0001"+
+		"\u0000\f\r\u0001\u0000\u0004\u0005G\u0000\u0016\u0001\u0000\u0000\u0000"+
+		"\u0002\u0019\u0001\u0000\u0000\u0000\u0004!\u0001\u0000\u0000\u0000\u0006"+
+		"+\u0001\u0000\u0000\u0000\b-\u0001\u0000\u0000\u0000\n1\u0001\u0000\u0000"+
+		"\u0000\f5\u0001\u0000\u0000\u0000\u000e7\u0001\u0000\u0000\u0000\u0010"+
+		">\u0001\u0000\u0000\u0000\u0012@\u0001\u0000\u0000\u0000\u0014J\u0001"+
+		"\u0000\u0000\u0000\u0016\u0017\u0003\u0002\u0001\u0000\u0017\u0018\u0005"+
+		"\u0000\u0000\u0001\u0018\u0001\u0001\u0000\u0000\u0000\u0019\u001e\u0003"+
+		"\u0004\u0002\u0000\u001a\u001b\u0007\u0000\u0000\u0000\u001b\u001d\u0003"+
+		"\u0004\u0002\u0000\u001c\u001a\u0001\u0000\u0000\u0000\u001d \u0001\u0000"+
+		"\u0000\u0000\u001e\u001c\u0001\u0000\u0000\u0000\u001e\u001f\u0001\u0000"+
+		"\u0000\u0000\u001f\u0003\u0001\u0000\u0000\u0000 \u001e\u0001\u0000\u0000"+
+		"\u0000!&\u0003\u0006\u0003\u0000\"#\u0007\u0001\u0000\u0000#%\u0003\u0006"+
+		"\u0003\u0000$\"\u0001\u0000\u0000\u0000%(\u0001\u0000\u0000\u0000&$\u0001"+
+		"\u0000\u0000\u0000&\'\u0001\u0000\u0000\u0000\'\u0005\u0001\u0000\u0000"+
+		"\u0000(&\u0001\u0000\u0000\u0000),\u0003\b\u0004\u0000*,\u0003\n\u0005"+
+		"\u0000+)\u0001\u0000\u0000\u0000+*\u0001\u0000\u0000\u0000,\u0007\u0001"+
+		"\u0000\u0000\u0000-.\u0005\n\u0000\u0000./\u0003\u0002\u0001\u0000/0\u0005"+
+		"\u000b\u0000\u00000\t\u0001\u0000\u0000\u000012\u0003\f\u0006\u000023"+
+		"\u0003\u000e\u0007\u000034\u0003\u0010\b\u00004\u000b\u0001\u0000\u0000"+
+		"\u000056\u0005\u0003\u0000\u00006\r\u0001\u0000\u0000\u000078\u0007\u0002"+
+		"\u0000\u00008\u000f\u0001\u0000\u0000\u00009:\u0005\n\u0000\u0000:;\u0003"+
+		"\u0012\t\u0000;<\u0005\u000b\u0000\u0000<?\u0001\u0000\u0000\u0000=?\u0003"+
+		"\u0014\n\u0000>9\u0001\u0000\u0000\u0000>=\u0001\u0000\u0000\u0000?\u0011"+
+		"\u0001\u0000\u0000\u0000@E\u0003\u0014\n\u0000AB\u0005\b\u0000\u0000B"+
+		"D\u0003\u0014\n\u0000CA\u0001\u0000\u0000\u0000DG\u0001\u0000\u0000\u0000"+
+		"EC\u0001\u0000\u0000\u0000EF\u0001\u0000\u0000\u0000F\u0013\u0001\u0000"+
+		"\u0000\u0000GE\u0001\u0000\u0000\u0000HK\u0005\u0003\u0000\u0000IK\u0007"+
+		"\u0003\u0000\u0000JH\u0001\u0000\u0000\u0000JI\u0001\u0000\u0000\u0000"+
+		"K\u0015\u0001\u0000\u0000\u0000\u0006\u001e&+>EJ";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

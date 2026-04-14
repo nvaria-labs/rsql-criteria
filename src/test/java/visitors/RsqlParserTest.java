@@ -22,10 +22,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Lexer;
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
-import visitor.JPACriteriaRsqlVistor;
 
 class RsqlParserTest {
 
@@ -42,11 +39,10 @@ class RsqlParserTest {
     void parseStringTest(){
         CodePointCharStream rsqlcharstream =  CharStreams.fromString(testString6);
         Lexer lexer = new RsqlLexer(rsqlcharstream);
-        TokenStream tokenStream = new CommonTokenStream(lexer);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         RsqlParser parser = new RsqlParser(tokenStream);
-        ParseTree parseTree = parser.and();
-        String result =   new JPACriteriaRsqlVistor().visit(parseTree);
 
-        System.out.println(result);
-    }
+        new RsqlPrinter().enterAnd(parser.and());
+
+     }
 }

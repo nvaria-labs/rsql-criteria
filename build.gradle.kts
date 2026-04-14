@@ -1,13 +1,14 @@
 import io.github.simonhauck.release.version.api.Version
+import java.util.UUID
 
 plugins {
     `java-library`
     idea
-    id("com.github.ben-manes.versions") version "0.52.0"
-    id("org.barfuin.gradle.jacocolog") version "3.1.0"
-    id("io.github.simonhauck.release") version "1.4.0"
-    id("org.spdx.sbom") version "0.9.0"
-    id("dev.yumi.gradle.licenser") version "2.1.1"
+    id("com.github.ben-manes.versions") version "0.53.0"
+    id("org.barfuin.gradle.jacocolog") version "4.0.2"
+    id("io.github.simonhauck.release") version "1.5.1"
+    id("org.spdx.sbom") version "0.10.0"
+    id("dev.yumi.gradle.licenser") version "3.0.1"
     `maven-publish`
     jacoco
     antlr
@@ -32,12 +33,12 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             groupId = "ch.nvaria.rsql"
-            artifactId = "rsql-parser"
+            artifactId = "rsql-criteria"
 
             from(components["java"])
             pom {
-                name.set("rsql-parser")
-                description.set("A Library to parse rsql")
+                name.set("rsql-criteria")
+                description.set("A Library to parse rsql and create criteria API predicates")
                 url.set("")
 
                 licenses {
@@ -93,6 +94,10 @@ sourceSets.configureEach {
 dependencies {
     antlr(libs.antlr.v4)
     implementation(libs.antlr.v4.runtime)
+    api(libs.jakarta.persistence.api)
+
+    testImplementation(libs.hibernate.core)
+    testImplementation(libs.h2)
 
     mockitoAgent(libs.mockito.core) { isTransitive = false }
     testImplementation(libs.hamcrest)
@@ -117,6 +122,10 @@ tasks.generateGrammarSource {
     outputDirectory = file(layout.projectDirectory.dir("src/main/java/ch/nvaria/generated"))
     maxHeapSize = "64m"
     arguments = arguments + listOf("-visitor", "-long-messages", "-package" ,"ch.nvaria.generated")
+}
+
+tasks.named<Jar>("sourcesJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.named("test").configure { dependsOn("jar") }
@@ -145,19 +154,22 @@ spdxSbom {
 
         create("release") {
             outputFile.set(layout.buildDirectory.file("release.spdx.json"))
-            description = "This library can be used to easily access bpmn models"
+            description = "This library can be used to create criteria api predicates from rsql"
 
             scm {
                 uri.set("https://nexus.nvaria.cloud")
-                if (project.hasProperty("spdxRevision")) {
-                    revision.set(project.property("spdxRevision").toString())
-                }
+                revision.set(project.version.toString())
             }
             document {
-                name.set("Impulse Model BPMN")
+                name.set("Rsql Criteria API generator")
                 creator.set("Organization: Nvaria GmbH")
-                namespace.set("https://nvaria.ch/spdx/1234-5678-9632-7412")
+                namespace.set("https://nvaria.ch/spdx/${UUID.randomUUID()}")
                 packageSupplier.set("Organization: Nvaria GmbH")
+                uberPackage {
+                    name.set("rsql-criteria-generator")
+                    version.set(project.version.toString())
+                    supplier.set("Organization: Nvaria GmbH")
+                }
             }
 
         }

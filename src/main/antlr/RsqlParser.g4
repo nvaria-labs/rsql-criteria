@@ -4,9 +4,9 @@ options { tokenVocab=RsqlLexer; }
 
 input : or EOF  ;
 
-or : and (OR and)*  ;
+or : and ((OR | COMMA) and)*  ;
 
-and : constraint (AND constraint)*  ;
+and : constraint ((AND | SEMICOLON) constraint)*  ;
 
 constraint : (group | comparison)  ;
 
@@ -20,6 +20,6 @@ operator : (COMP_FIQL | COMP_ALT)  ;
 
 arguments : (LPAREN commaSepArguments RPAREN | argument)  ;
 
-commaSepArguments : argument (OR argument)*  ;
+commaSepArguments : argument (COMMA argument)*  ;
 
 argument : (UNRESERVED_STR | (DOUBLE_QUOTED_STR | SINGLE_QUOTED_STR))  ;

@@ -1,2 +1,2 @@
-rootProject.name = "rest-sql"
+rootProject.name = "rsql-criteria"
 

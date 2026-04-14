@@ -1,12 +1,15 @@
 [versions]
 
-junit5 = "5.13.3"
-junit5launcher="1.13.2"
-mockito ="5.18.0"
+junit5 = "6.1.0-M1"
+junit5launcher="6.1.0-M1"
+mockito ="5.23.0"
 instancio ="5.1.0"
 antlr = "4.13.2"
 hamcrest ="3.0"
 hamcrestdate="2.0.8"
+jakarta-persistence = "3.2.0"
+hibernate-core = "6.6.15.Final"
+h2 = "2.3.232"
 
 
 [libraries]
@@ -28,3 +31,7 @@ antlr-v4 = { module = "org.antlr:antlr4", version.ref = "antlr" }
 
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 hamcrest-date = { module = "org.exparity:hamcrest-date", version.ref = "hamcrestdate" }
+
+jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version.ref = "jakarta-persistence" }
+hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-core" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
