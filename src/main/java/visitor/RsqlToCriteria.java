@@ -19,8 +19,11 @@ package visitor;
 import ch.nvaria.generated.RsqlLexer;
 import ch.nvaria.generated.RsqlParser;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+
+import java.util.Map;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -49,5 +52,32 @@ public final class RsqlToCriteria {
 
         RsqlParser.InputContext tree = parser.input();
         return new JPACriteriaRsqlVistor<>(cb, root).visitInput(tree);
+    }
+
+    public static <T> Predicate parseJsonColumn(String rsql, CriteriaBuilder cb, From<?, T> from,
+                                                String jsonColumnField) {
+        return parseJsonColumn(rsql, cb, from, jsonColumnField, Map.of());
+    }
+
+    public static <T> Predicate parseJsonColumn(String rsql, CriteriaBuilder cb, From<?, T> from,
+                                                String jsonColumnField,
+                                                Map<String, Class<?>> fieldTypes) {
+        RsqlLexer lexer = new RsqlLexer(CharStreams.fromString(rsql));
+        lexer.removeErrorListeners();
+
+        RsqlParser parser = new RsqlParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.addErrorListener(new BaseErrorListener() {
+            @Override
+            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                    int line, int charPositionInLine, String msg,
+                                    RecognitionException e) {
+                throw new RsqlParseException(
+                        "Syntax error at line " + line + ":" + charPositionInLine + " — " + msg, e);
+            }
+        });
+
+        RsqlParser.InputContext tree = parser.input();
+        return new JsonColumnRsqlVisitor<>(cb, from, jsonColumnField, fieldTypes).visitInput(tree);
     }
 }

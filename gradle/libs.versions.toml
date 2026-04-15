@@ -8,8 +8,8 @@ antlr = "4.13.2"
 hamcrest ="3.0"
 hamcrestdate="2.0.8"
 jakarta-persistence = "3.2.0"
-hibernate-core = "6.6.15.Final"
-h2 = "2.3.232"
+hibernate-core = "7.3.0.Final"
+h2 = "2.4.240"
 
 
 [libraries]

@@ -19,6 +19,7 @@ package visitor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public final class RsqlTypeCoercion {
@@ -35,6 +36,7 @@ public final class RsqlTypeCoercion {
             if (type == Float.class   || type == float.class) return Float.parseFloat(raw);
             if (type == BigDecimal.class) return new BigDecimal(raw);
             if (type == Boolean.class || type == boolean.class) return Boolean.parseBoolean(raw);
+            if (type == OffsetDateTime.class) return OffsetDateTime.parse(raw);
             if (type == LocalDate.class) return LocalDate.parse(raw);
             if (type == LocalDateTime.class) return LocalDateTime.parse(raw);
             if (type == UUID.class) return UUID.fromString(raw);
@@ -43,5 +45,14 @@ public final class RsqlTypeCoercion {
             throw new RsqlParseException("Cannot coerce '" + raw + "' to " + type.getSimpleName(), e);
         }
         throw new RsqlParseException("Unsupported field type for coercion: " + type.getName());
+    }
+
+    public static Class<?> inferComparableType(String selector, String raw) {
+        try { OffsetDateTime.parse(raw); return OffsetDateTime.class; } catch (Exception ignored) {}
+        try { LocalDateTime.parse(raw);  return LocalDateTime.class;  } catch (Exception ignored) {}
+        try { LocalDate.parse(raw);      return LocalDate.class;      } catch (Exception ignored) {}
+        try { Double.parseDouble(raw);   return Double.class;         } catch (Exception ignored) {}
+        throw new RsqlParseException(
+            "Field '" + selector + "': cannot infer orderable type from '" + raw + "': not a datetime, date, or number");
     }
 }
