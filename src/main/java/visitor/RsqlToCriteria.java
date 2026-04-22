@@ -62,6 +62,17 @@ public final class RsqlToCriteria {
     public static <T> Predicate parseJsonColumn(String rsql, CriteriaBuilder cb, From<?, T> from,
                                                 String jsonColumnField,
                                                 Map<String, Class<?>> fieldTypes) {
+        return parseJsonColumn(rsql, cb, from, jsonColumnField, fieldTypes, false);
+    }
+
+    public static <T> Predicate parseJsonColumn(String rsql, CriteriaBuilder cb, From<?, T> from,
+                                                String jsonColumnField, boolean avroMode) {
+        return parseJsonColumn(rsql, cb, from, jsonColumnField, Map.of(), avroMode);
+    }
+
+    public static <T> Predicate parseJsonColumn(String rsql, CriteriaBuilder cb, From<?, T> from,
+                                                String jsonColumnField,
+                                                Map<String, Class<?>> fieldTypes, boolean avroMode) {
         RsqlLexer lexer = new RsqlLexer(CharStreams.fromString(rsql));
         lexer.removeErrorListeners();
 
@@ -78,6 +89,6 @@ public final class RsqlToCriteria {
         });
 
         RsqlParser.InputContext tree = parser.input();
-        return new JsonColumnRsqlVisitor<>(cb, from, jsonColumnField, fieldTypes).visitInput(tree);
+        return new JsonColumnRsqlVisitor<>(cb, from, jsonColumnField, fieldTypes, avroMode).visitInput(tree);
     }
 }

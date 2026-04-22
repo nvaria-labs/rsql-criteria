@@ -18,6 +18,8 @@ public class Product {
 
     private String attributes;
 
+    private String car;
+
     public Product() {}
 
     public Product(String attributes) {
@@ -32,4 +34,12 @@ public class Product {
     public Long getId() { return id; }
     public Long getMovieId() { return movieId; }
     public String getAttributes() { return attributes; }
+
+    public String getCar() {
+        return car;
+    }
+
+    public void setCar(String car) {
+        this.car = car;
+    }
 }

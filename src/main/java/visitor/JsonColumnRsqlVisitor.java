@@ -44,22 +44,33 @@ import java.util.Map;
  */
 public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
+    private static final String[] AVRO_TYPE_KEYS = { "int", "long", "float", "double", "string", "boolean" };
+
     private final CriteriaBuilder cb;
     private final From<?, T> from;
     private final String jsonColumnField;
     private final Map<String, Class<?>> fieldTypes;
+    private final boolean avroMode;
 
     public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
                                  String jsonColumnField,
-                                 Map<String, Class<?>> fieldTypes) {
+                                 Map<String, Class<?>> fieldTypes,
+                                 boolean avroMode) {
         this.cb = cb;
         this.from = from;
         this.jsonColumnField = jsonColumnField;
         this.fieldTypes = fieldTypes;
+        this.avroMode = avroMode;
+    }
+
+    public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
+                                 String jsonColumnField,
+                                 Map<String, Class<?>> fieldTypes) {
+        this(cb, from, jsonColumnField, fieldTypes, false);
     }
 
     public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from, String jsonColumnField) {
-        this(cb, from, jsonColumnField, Map.of());
+        this(cb, from, jsonColumnField, Map.of(), false);
     }
 
     // --- tree traversal (identical to JPACriteriaRsqlVistor) ---
@@ -127,11 +138,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
         // the requested Java type. Always extract as String, then CAST to the numeric
         // type when needed so H2 can do proper numeric comparisons.
         // Dates (ISO-8601) sort correctly as strings; booleans are compared as 'true'/'false'.
-        Expression<String> strExpr = cb.function(
-            "json_value", String.class,
-            from.get(jsonColumnField),
-            cb.literal(jsonPath)
-        );
+        Expression<String> strExpr = buildJsonValueExpr(jsonPath);
 
         if (isNumeric(semanticType)) {
             Expression<?> numExpr = strExpr.as(semanticType);
@@ -140,6 +147,23 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
         // non-numeric: compare as plain string, bind raw values
         return buildPredicate(operator, strExpr, String.class, rawArgs);
+    }
+
+    private Expression<String> buildJsonValueExpr(String jsonPath) {
+        if (!avroMode) {
+            return cb.function("json_value", String.class,
+                from.get(jsonColumnField), cb.literal(jsonPath));
+        }
+        // In avroMode, union-typed fields are wrapped: {"int": 500}. Try each Avro
+        // primitive type key first, then fall back to the plain path for non-wrapped fields.
+        CriteriaBuilder.Coalesce<String> coalesce = cb.coalesce();
+        for (String key : AVRO_TYPE_KEYS) {
+            coalesce.value(cb.function("json_value", String.class,
+                from.get(jsonColumnField), cb.literal(jsonPath + "." + key)));
+        }
+        coalesce.value(cb.function("json_value", String.class,
+            from.get(jsonColumnField), cb.literal(jsonPath)));
+        return coalesce;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

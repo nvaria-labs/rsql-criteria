@@ -60,7 +60,7 @@ class JsonColumnRsqlVisitorTest {
         EntityManager em = emf.createEntityManager();
         CriteriaQuery<Product> cq   = cb.createQuery(Product.class);
         Root<Product>          root = cq.from(Product.class);
-        Predicate predicate = RsqlToCriteria.parseJsonColumn(rsql, cb, root, "attributes", fieldTypes);
+        Predicate predicate = RsqlToCriteria.parseJsonColumn(rsql, cb, root, "attributes", fieldTypes, true);
         cq.where(predicate);
         TypedQuery<Product> q = em.createQuery(cq);
         List<Product> results = q.getResultList();
