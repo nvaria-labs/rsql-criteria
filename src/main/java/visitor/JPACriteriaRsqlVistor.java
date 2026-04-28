@@ -106,6 +106,15 @@ public class JPACriteriaRsqlVistor<T> extends RsqlParserBaseVisitor<Predicate> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Predicate buildPredicate(RsqlOperator operator, Path path, List<String> rawArgs) {
         String firstRaw = rawArgs.get(0);
+
+        if ("null".equalsIgnoreCase(firstRaw)) {
+            return switch (operator) {
+                case EQ  -> cb.isNull(path);
+                case NEQ -> cb.isNotNull(path);
+                default  -> throw new RsqlParseException("Operator " + operator + " cannot be used with null");
+            };
+        }
+
         boolean hasWildcard = firstRaw.contains("*");
 
         return switch (operator) {

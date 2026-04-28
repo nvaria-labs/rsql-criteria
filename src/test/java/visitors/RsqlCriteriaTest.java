@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import visitor.RsqlParseException;
 import visitor.RsqlToCriteria;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,8 +40,12 @@ class RsqlCriteriaTest {
         em.persist(nolan);
         em.persist(tarantino);
 
-        em.persist(new Movie("The Dark Knight",  2008, "action",  "Christian Bale",        nolan));
-        em.persist(new Movie("Inception",        2010, "sci-fi",  "Leonardo DiCaprio",     nolan));
+        Movie darkKnight = new Movie("The Dark Knight", 2008, "action", "Christian Bale", nolan);
+        darkKnight.setReleaseDate(LocalDate.of(2008, 7, 18));
+        Movie inception = new Movie("Inception", 2010, "sci-fi", "Leonardo DiCaprio", nolan);
+        inception.setReleaseDate(LocalDate.of(2010, 7, 16));
+        em.persist(darkKnight);
+        em.persist(inception);
         em.persist(new Movie("Interstellar",     2014, "sci-fi",  "Matthew McConaughey",   nolan));
         em.persist(new Movie("Pulp Fiction",     1994, "crime",   "John Travolta",         tarantino));
         em.persist(new Movie("Kill Bill",        2003, "action",  "Uma Thurman",           tarantino));
@@ -232,6 +237,25 @@ class RsqlCriteriaTest {
     void combined_inAndOut() {
         // genre=in=(sci-fi,action);genre=out=(action)  → only sci-fi: 2
         assertThat(query("genre=in=(sci-fi,action);genre=out=(action)"), hasSize(2));
+    }
+
+    // --- null ---
+
+    @Test
+    void eq_null_returnsRowsWithNullField() {
+        // 3 movies have no releaseDate set
+        assertThat(query("releaseDate==null"), hasSize(3));
+    }
+
+    @Test
+    void neq_null_returnsRowsWithNonNullField() {
+        // 2 movies have releaseDate set
+        assertThat(query("releaseDate!=null"), hasSize(2));
+    }
+
+    @Test
+    void null_caseInsensitive() {
+        assertThat(query("releaseDate==NULL"), hasSize(3));
     }
 
     // --- error handling ---
