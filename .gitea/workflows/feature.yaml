@@ -22,15 +22,6 @@ jobs:
       NEXUS_PW: ${{ vars.DOCKERPW }}
     steps:
       - uses: actions/checkout@v6
-      - uses: gradle/actions/wrapper-validation@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
       - name: Build with Gradle
         run: gradle build --no-daemon
       - name: Publish to nexus
