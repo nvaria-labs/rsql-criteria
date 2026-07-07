@@ -22,6 +22,8 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Predicate;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaExpression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,14 +136,14 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
                 "Field '" + selector + "': ordering operators require a numeric or date type, got String");
         }
 
-        // Hibernate renders json_value as a VARCHAR expression on H2 regardless of
-        // the requested Java type. Always extract as String, then CAST to the numeric
-        // type when needed so H2 can do proper numeric comparisons.
+        // json_value extraction always yields a text expression. Always extract as
+        // String, then emit a real SQL CAST to the numeric type when needed so the
+        // database compares numbers, not text vs. number.
         // Dates (ISO-8601) sort correctly as strings; booleans are compared as 'true'/'false'.
         Expression<String> strExpr = buildJsonValueExpr(jsonPath);
 
         if (isNumeric(semanticType)) {
-            Expression<?> numExpr = strExpr.as(semanticType);
+            Expression<?> numExpr = castTo(strExpr, semanticType);
             return buildPredicate(operator, numExpr, semanticType, rawArgs);
         }
 
@@ -164,6 +166,21 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
         coalesce.value(cb.function("json_value", String.class,
             from.get(jsonColumnField), cb.literal(jsonPath)));
         return coalesce;
+    }
+
+    /**
+     * Emits a real SQL {@code CAST(... AS <numeric>)}.
+     *
+     * <p>{@link Expression#as(Class)} is deliberately NOT used: per the JPA spec it only
+     * changes the reported Java type and "does not cause type conversion", so no CAST is
+     * rendered. The left side then stays text while the bound argument is a number,
+     * producing {@code operator does not exist: text >= double precision} on PostgreSQL
+     * (SQLState 42883). {@link HibernateCriteriaBuilder#cast} renders the actual CAST.
+     */
+    @SuppressWarnings("unchecked")
+    private <N> Expression<N> castTo(Expression<String> strExpr, Class<N> numericType) {
+        HibernateCriteriaBuilder hcb = (HibernateCriteriaBuilder) cb;
+        return hcb.cast((JpaExpression<String>) strExpr, numericType);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

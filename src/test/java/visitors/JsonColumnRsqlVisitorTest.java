@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonColumnRsqlVisitorTest {
 
@@ -125,6 +126,28 @@ class JsonColumnRsqlVisitorTest {
     @Test
     void gt_number_explicit() {
         assertThat(query("price=gt=10", Map.of("price", Double.class)), hasSize(2));
+    }
+
+    /**
+     * Regression: ordering on a numeric JSON value must render a real SQL {@code cast(...)}.
+     * With the old {@code Expression.as()} the left side stayed text and PostgreSQL rejected
+     * it with {@code operator does not exist: text >= double precision} (SQLState 42883).
+     * H2 is lenient about text/number comparison, so this asserts on the emitted SQL, not
+     * only the result count, to catch the defect on any dialect.
+     */
+    @Test
+    void ge_number_rendersRealCast() {
+        SqlCapture.clear();
+        query("price=ge=24.99", Map.of("price", Double.class));
+        // The old Expression.as() rendered no cast at all (the extraction stayed text);
+        // the fix wraps the JSON extraction in cast(... as <float>). H2 compiles
+        // json_value into its native (col format json)."path" syntax, so assert on the
+        // cast rather than the function name.
+        boolean hasNumericCast = SqlCapture.statements().stream()
+            .map(String::toLowerCase)
+            .anyMatch(sql -> sql.contains("cast(") && sql.contains("as float"));
+        assertTrue(hasNumericCast,
+            "expected a real SQL numeric cast around the JSON extraction, got: " + SqlCapture.statements());
     }
 
     // --- boolean ---

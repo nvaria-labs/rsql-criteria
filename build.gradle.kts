@@ -4,11 +4,11 @@ import java.util.UUID
 plugins {
     `java-library`
     idea
-    id("com.github.ben-manes.versions") version "0.53.0"
+    id("com.github.ben-manes.versions") version "0.54.0"
     id("org.barfuin.gradle.jacocolog") version "4.0.2"
     id("io.github.simonhauck.release") version "1.5.1"
-    id("org.spdx.sbom") version "0.10.0"
-    id("dev.yumi.gradle.licenser") version "3.0.1"
+    id("org.spdx.sbom") version "0.11.0"
+    id("dev.yumi.gradle.licenser") version "4.0.0"
     `maven-publish`
     jacoco
     antlr
@@ -99,6 +99,11 @@ dependencies {
     antlr(libs.antlr.v4)
     implementation(libs.antlr.v4.runtime)
     api(libs.jakarta.persistence.api)
+
+    // Hibernate's HibernateCriteriaBuilder.cast() emits a real SQL CAST (json_value
+    // extraction is Hibernate-specific anyway). compileOnly keeps it off the runtime
+    // classpath of consumers who supply their own Hibernate.
+    compileOnly(libs.hibernate.core)
 
     testImplementation(libs.hibernate.core)
     testImplementation(libs.h2)
