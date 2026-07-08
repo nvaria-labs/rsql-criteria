@@ -47,6 +47,7 @@ import java.util.Map;
 public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
     private static final String[] AVRO_TYPE_KEYS = { "int", "long", "float", "double", "string", "boolean" };
+    private static final String JSON_VALUE = "json_value";
 
     private final CriteriaBuilder cb;
     private final From<?, T> from;
@@ -85,14 +86,14 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
     @Override
     public Predicate visitOr(RsqlParser.OrContext ctx) {
         List<RsqlParser.AndContext> children = ctx.and();
-        if (children.size() == 1) return visit(children.get(0));
+        if (children.size() == 1) return visit(children.getFirst());
         return cb.or(children.stream().map(this::visit).toArray(Predicate[]::new));
     }
 
     @Override
     public Predicate visitAnd(RsqlParser.AndContext ctx) {
         List<RsqlParser.ConstraintContext> children = ctx.constraint();
-        if (children.size() == 1) return visit(children.get(0));
+        if (children.size() == 1) return visit(children.getFirst());
         return cb.and(children.stream().map(this::visit).toArray(Predicate[]::new));
     }
 
@@ -153,17 +154,17 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
     private Expression<String> buildJsonValueExpr(String jsonPath) {
         if (!avroMode) {
-            return cb.function("json_value", String.class,
+            return cb.function(JSON_VALUE, String.class,
                 from.get(jsonColumnField), cb.literal(jsonPath));
         }
         // In avroMode, union-typed fields are wrapped: {"int": 500}. Try each Avro
         // primitive type key first, then fall back to the plain path for non-wrapped fields.
         CriteriaBuilder.Coalesce<String> coalesce = cb.coalesce();
         for (String key : AVRO_TYPE_KEYS) {
-            coalesce.value(cb.function("json_value", String.class,
+            coalesce.value(cb.function(JSON_VALUE, String.class,
                 from.get(jsonColumnField), cb.literal(jsonPath + "." + key)));
         }
-        coalesce.value(cb.function("json_value", String.class,
+        coalesce.value(cb.function(JSON_VALUE, String.class,
             from.get(jsonColumnField), cb.literal(jsonPath)));
         return coalesce;
     }
@@ -186,7 +187,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Predicate buildPredicate(RsqlOperator op, Expression<?> expr,
                                      Class<?> type, List<String> args) {
-        String  first    = args.get(0);
+        String  first    = args.getFirst();
         boolean wildcard = first.contains("*");
 
         return switch (op) {
