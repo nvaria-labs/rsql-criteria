@@ -22,8 +22,10 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Predicate;
+import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaExpression;
+import org.hibernate.query.sqm.NodeBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +56,14 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
     private final String jsonColumnField;
     private final Map<String, Class<?>> fieldTypes;
     private final boolean avroMode;
+    /**
+     * The scalar JSON-extraction function to render. On PostgreSQL the built-in {@code json_value}
+     * renders as {@code json_value(col, path RETURNING jsonb) #>> '{}'}, which misfires in filter
+     * predicates over heterogeneous jsonb on PG 18.x; there we use {@code json_value_text}
+     * (native {@code json_value(col, path)}) registered by {@link JsonValueFunctionContributor}.
+     * Every other dialect keeps the built-in, which renders its own correct native form.
+     */
+    private final String jsonValueFn;
 
     public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
                                  String jsonColumnField,
@@ -64,6 +74,12 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
         this.jsonColumnField = jsonColumnField;
         this.fieldTypes = fieldTypes;
         this.avroMode = avroMode;
+        this.jsonValueFn = isPostgres(cb) ? JsonValueFunctionContributor.JSON_VALUE_TEXT : JSON_VALUE;
+    }
+
+    private static boolean isPostgres(CriteriaBuilder cb) {
+        return cb instanceof NodeBuilder nb
+                && nb.getQueryEngine().getDialect() instanceof PostgreSQLDialect;
     }
 
     public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
@@ -154,17 +170,17 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
     private Expression<String> buildJsonValueExpr(String jsonPath) {
         if (!avroMode) {
-            return cb.function(JSON_VALUE, String.class,
+            return cb.function(jsonValueFn, String.class,
                 from.get(jsonColumnField), cb.literal(jsonPath));
         }
         // In avroMode, union-typed fields are wrapped: {"int": 500}. Try each Avro
         // primitive type key first, then fall back to the plain path for non-wrapped fields.
         CriteriaBuilder.Coalesce<String> coalesce = cb.coalesce();
         for (String key : AVRO_TYPE_KEYS) {
-            coalesce.value(cb.function(JSON_VALUE, String.class,
+            coalesce.value(cb.function(jsonValueFn, String.class,
                 from.get(jsonColumnField), cb.literal(jsonPath + "." + key)));
         }
-        coalesce.value(cb.function(JSON_VALUE, String.class,
+        coalesce.value(cb.function(jsonValueFn, String.class,
             from.get(jsonColumnField), cb.literal(jsonPath)));
         return coalesce;
     }
