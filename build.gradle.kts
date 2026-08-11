@@ -4,11 +4,11 @@ import java.util.UUID
 plugins {
     `java-library`
     idea
-    id("com.github.ben-manes.versions") version "0.54.0"
-    id("org.barfuin.gradle.jacocolog") version "4.0.2"
-    id("io.github.simonhauck.release") version "1.5.1"
-    id("org.spdx.sbom") version "0.11.0"
-    id("dev.yumi.gradle.licenser") version "4.0.0"
+    alias(libs.plugins.ben.manes.versions)
+    alias(libs.plugins.jacocolog)
+    alias(libs.plugins.release)
+    alias(libs.plugins.spdx.sbom)
+    alias(libs.plugins.licenser)
     `maven-publish`
     jacoco
     antlr
@@ -20,8 +20,8 @@ val versionFile = layout.settingsDirectory.file("version.properties").asFile
 version =  Version.fromPropertiesFile(versionFile)
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
     withSourcesJar()
 }
 

@@ -20,7 +20,7 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     container:
-      image: registry.nvaria.cloud/ubuntu-act-jdk21:latest
+      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
       credentials:
         username: ${{ vars.DOCKERUSER }}
         password: ${{ vars.DOCKERPW }}
@@ -33,7 +33,7 @@ jobs:
     name: Trigger the release
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ vars.PAT}}
       - name: Set Git User and Email

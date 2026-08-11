@@ -10,7 +10,7 @@ jobs:
     name: Build image
     runs-on: ubuntu-latest
     container:
-      image: registry.nvaria.cloud/ubuntu-act-jdk21:latest
+      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
       credentials:
         username: ${{ vars.DOCKERUSER }}
         password: ${{ vars.DOCKERPW }}
@@ -21,7 +21,7 @@ jobs:
       NEXUS_USER: ${{ vars.DOCKERUSER }}
       NEXUS_PW: ${{ vars.DOCKERPW }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build with Gradle
         run: gradle build --no-daemon
       - name: Publish to nexus
