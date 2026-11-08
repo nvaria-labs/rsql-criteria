@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.jacocolog)
     alias(libs.plugins.release)
     alias(libs.plugins.spdx.sbom)
-    alias(libs.plugins.licenser)
     alias(libs.plugins.maven.publish)
     jacoco
     antlr
@@ -329,14 +328,4 @@ tasks.matching { it is Jar || it is com.vanniktech.maven.publish.tasks.JavadocJa
 
 tasks.named<Jar>("sourcesJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-
-license {
-    rule(file("codeformat/ASF-2.0"))
-    // Headers say 2024; git history only starts in 2025
-    projectCreationYear.set(2024)
-
-    include("**/*.java")
-    exclude("ch/nvaria/rsql/internal/parser/**")
 }

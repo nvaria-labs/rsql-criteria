@@ -12,7 +12,6 @@ ben-manes-versions = "0.67.0"
 jacocolog = "4.0.3"
 release = "1.5.1"
 spdx-sbom = "0.12.0"
-licenser = "4.0.0"
 vanniktech-publish = "0.37.0"
 
 [plugins]
@@ -21,7 +20,6 @@ ben-manes-versions = { id = "io.github.ben-manes.versions", version.ref = "ben-m
 jacocolog = { id = "org.barfuin.gradle.jacocolog", version.ref = "jacocolog" }
 release = { id = "io.github.simonhauck.release", version.ref = "release" }
 spdx-sbom = { id = "org.spdx.sbom", version.ref = "spdx-sbom" }
-licenser = { id = "dev.yumi.gradle.licenser", version.ref = "licenser" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-publish" }
 
 [libraries]
