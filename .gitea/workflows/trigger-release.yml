@@ -22,20 +22,20 @@ jobs:
     container:
       image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
       credentials:
-        username: ${{ vars.DOCKERUSER }}
-        password: ${{ vars.DOCKERPW }}
+        username: ${{ secrets.DOCKERUSER }}
+        password: ${{ secrets.DOCKERPW }}
     env:
       RUNNER_TOOL_CACHE: /toolcache
-      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE  }}
+      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE }}
       NEXUS_MVN_SNAPSHOTS: ${{ vars.NEXUS_MVN_SNAPSHOTS }}
-      NEXUS_USER: ${{ vars.DOCKERUSER }}
-      NEXUS_PW: ${{ vars.DOCKERPW }}
+      NEXUS_USER: ${{ secrets.DOCKERUSER }}
+      NEXUS_PW: ${{ secrets.DOCKERPW }}
     name: Trigger the release
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          token: ${{ vars.PAT}}
+          token: ${{ secrets.PAT }}
       - name: Set Git User and Email
         run: |
           git config --global user.email "gitea@nvaria.cloud"

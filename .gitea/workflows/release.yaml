@@ -13,27 +13,34 @@ jobs:
     container:
       image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
       credentials:
-        username: ${{ vars.DOCKERUSER }}
-        password: ${{ vars.DOCKERPW }}
+        username: ${{ secrets.DOCKERUSER }}
+        password: ${{ secrets.DOCKERPW }}
     env:
       RUNNER_TOOL_CACHE: /toolcache
-      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE  }}
+      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE }}
       NEXUS_MVN_SNAPSHOTS: ${{ vars.NEXUS_MVN_SNAPSHOTS }}
-      NEXUS_USER: ${{ vars.DOCKERUSER }}
-      NEXUS_PW: ${{ vars.DOCKERPW }}
+      NEXUS_USER: ${{ secrets.DOCKERUSER }}
+      NEXUS_PW: ${{ secrets.DOCKERPW }}
+      # Signs every publication (nexus and Maven Central); without the key builds stay unsigned
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY_NVARIA_OSS }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE_NVARIA_OSS }}
     steps:
       - uses: actions/checkout@v7
         with:
-          token: ${{ vars.PAT}}
+          token: ${{ secrets.PAT }}
       - name: Build with Gradle
         run: gradle build --no-daemon
-      - name: Generate SBOM
-        run: gradle spdxSbomForRelease --no-daemon
+      # Nexus never accepts the same release version twice. Not failing the job here lets a
+      # re-run of this workflow retry only the Central upload (e.g. after a token problem).
       - name: Publish to nexus
+        continue-on-error: true
         run: gradle publishMavenPublicationToMaven-releaseRepository --no-daemon
-
-
-
-
-
-
+      # Uploads and validates the deployment; it goes live after "Publish" is clicked
+      # on https://central.sonatype.com/publishing/deployments
+      # Off unless the repository variable MAVEN_CENTRAL_ENABLED is 'true'
+      - name: Publish to Maven Central
+        if: ${{ vars.MAVEN_CENTRAL_ENABLED == 'true' }}
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: gradle publishToMavenCentral --no-daemon
