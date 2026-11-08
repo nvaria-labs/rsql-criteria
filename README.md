@@ -141,3 +141,5 @@ GitHub with the next sync, with your authorship preserved.
 ## License
 
 Apache License 2.0, see [LICENSE](LICENSE).
+
+Maintained by [Nvaria GmbH](https://nvaria.ch).
