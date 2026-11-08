@@ -30,7 +30,6 @@ import jakarta.persistence.metamodel.ManagedType;
 import jakarta.persistence.metamodel.PluralAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -116,18 +115,19 @@ public final class JpaCriteriaVisitor<T> extends RsqlParserBaseVisitor<Predicate
         // 2. Parse operator
         RsqlOperator operator = RsqlOperator.fromText(ctx.operator().getText());
 
-        // 3. Extract raw argument strings
-        List<String> rawArgs = extractArguments(ctx.arguments());
+        // 3. Extract arguments
+        List<Argument> args = Argument.extract(ctx.arguments());
 
         // 4. Build predicate
-        return buildPredicate(operator, path, rawArgs);
+        return buildPredicate(operator, path, args);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Predicate buildPredicate(RsqlOperator operator, Path path, List<String> rawArgs) {
-        String firstRaw = rawArgs.get(0);
+    private Predicate buildPredicate(RsqlOperator operator, Path path, List<Argument> args) {
+        Argument first = args.getFirst();
+        Class<?> type = path.getJavaType();
 
-        if ("null".equalsIgnoreCase(firstRaw)) {
+        if (first.isNull()) {
             return switch (operator) {
                 case EQ  -> cb.isNull(path);
                 case NEQ -> cb.isNotNull(path);
@@ -135,60 +135,36 @@ public final class JpaCriteriaVisitor<T> extends RsqlParserBaseVisitor<Predicate
             };
         }
 
-        boolean hasWildcard = firstRaw.contains("*");
-
         return switch (operator) {
-            case EQ -> hasWildcard
-                    ? cb.like(path.as(String.class), firstRaw.replace("*", "%"))
-                    : cb.equal(path, TypeCoercion.coerce(firstRaw, path.getJavaType()));
-            case NEQ -> hasWildcard
-                    ? cb.notLike(path.as(String.class), firstRaw.replace("*", "%"))
-                    : cb.notEqual(path, TypeCoercion.coerce(firstRaw, path.getJavaType()));
+            case EQ -> first.hasWildcard()
+                    ? cb.like(path.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE)
+                    : cb.equal(path, TypeCoercion.coerce(first.value(), type));
+            case NEQ -> first.hasWildcard()
+                    ? cb.notLike(path.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE)
+                    : cb.notEqual(path, TypeCoercion.coerce(first.value(), type));
             case GT -> cb.greaterThan(
                     (Expression<Comparable>) path,
-                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(first.value(), type));
             case GE -> cb.greaterThanOrEqualTo(
                     (Expression<Comparable>) path,
-                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(first.value(), type));
             case LT -> cb.lessThan(
                     (Expression<Comparable>) path,
-                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(first.value(), type));
             case LE -> cb.lessThanOrEqualTo(
                     (Expression<Comparable>) path,
-                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(first.value(), type));
             case IN -> {
                 CriteriaBuilder.In<Object> in = cb.in(path);
-                for (String raw : rawArgs) in.value(TypeCoercion.coerce(raw, path.getJavaType()));
+                for (Argument arg : args) in.value(TypeCoercion.coerce(arg.value(), type));
                 yield in;
             }
             case OUT -> {
                 CriteriaBuilder.In<Object> in = cb.in(path);
-                for (String raw : rawArgs) in.value(TypeCoercion.coerce(raw, path.getJavaType()));
+                for (Argument arg : args) in.value(TypeCoercion.coerce(arg.value(), type));
                 yield cb.not(in);
             }
-            case LIKE -> cb.like(path.as(String.class), firstRaw.replace("*", "%"));
+            case LIKE -> cb.like(path.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE);
         };
-    }
-
-    private List<String> extractArguments(RsqlParser.ArgumentsContext ctx) {
-        List<String> result = new ArrayList<>();
-        if (ctx.commaSepArguments() != null) {
-            for (RsqlParser.ArgumentContext arg : ctx.commaSepArguments().argument()) {
-                result.add(stripQuotes(arg.getText()));
-            }
-        } else {
-            result.add(stripQuotes(ctx.argument().getText()));
-        }
-        return result;
-    }
-
-    private static String stripQuotes(String text) {
-        if (text.length() >= 2) {
-            char first = text.charAt(0);
-            if ((first == '\'' || first == '"') && text.charAt(text.length() - 1) == first) {
-                return text.substring(1, text.length() - 1);
-            }
-        }
-        return text;
     }
 }

@@ -39,10 +39,13 @@ import java.util.Objects;
  *   <li>Logical AND: {@code ;} or {@code  and }; logical OR: {@code ,} or {@code  or };
  *       AND binds tighter than OR; parentheses group</li>
  *   <li>Arguments with reserved characters or spaces go in single or double quotes</li>
- *   <li>{@code *} in an {@code ==} / {@code !=} argument is a wildcard ({@code LIKE} /
- *       {@code NOT LIKE}); {@code =like=} always uses {@code *} as wildcard</li>
- *   <li>{@code ==null} / {@code !=null} test for {@code IS NULL} / {@code IS NOT NULL}
- *       (entity attributes only)</li>
+ *   <li>A backslash escapes the next character, quoted or not: {@code 'O\'Brien'},
+ *       {@code \*} for a literal star, {@code \\} for a backslash</li>
+ *   <li>An unescaped {@code *} in an {@code ==} / {@code !=} argument is a wildcard
+ *       ({@code LIKE} / {@code NOT LIKE}); {@code =like=} always treats it as one. {@code %} and
+ *       {@code _} are ordinary characters</li>
+ *   <li>{@code ==null} / {@code !=null} test for {@code IS NULL} / {@code IS NOT NULL}; in JSON
+ *       columns a missing field counts as null. Quoted, {@code 'null'} is the string "null"</li>
  * </ul>
  *
  * <p>Example:

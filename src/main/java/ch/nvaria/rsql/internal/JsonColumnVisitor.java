@@ -29,7 +29,6 @@ import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaExpression;
 import org.hibernate.query.sqm.NodeBuilder;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -121,14 +120,23 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
         String jsonPath  = selector.startsWith("$.") ? selector : "$." + selector;
 
         RsqlOperator operator = RsqlOperator.fromText(ctx.operator().getText());
-        List<String> rawArgs  = extractArguments(ctx.arguments());
+        List<Argument> args   = Argument.extract(ctx.arguments());
         boolean      ordering = isOrdering(operator);
+
+        // A missing key and JSON null both extract as SQL NULL, so ==null matches either
+        if (args.getFirst().isNull()) {
+            return switch (operator) {
+                case EQ  -> cb.isNull(buildJsonValueExpr(jsonPath));
+                case NEQ -> cb.isNotNull(buildJsonValueExpr(jsonPath));
+                default  -> throw new RsqlParseException("Operator " + operator + " cannot be used with null");
+            };
+        }
 
         // resolve semantic type (for validation + numeric cast decisions)
         Class<?> semanticType = fieldTypes.getOrDefault(selector, null);
         if (semanticType == null) {
             semanticType = ordering
-                ? TypeCoercion.inferComparableType(selector, rawArgs.getFirst())
+                ? TypeCoercion.inferComparableType(selector, args.getFirst().value())
                 : String.class;
         }
 
@@ -151,11 +159,11 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
 
         if (isNumeric(semanticType)) {
             Expression<?> numExpr = castTo(strExpr, semanticType);
-            return buildPredicate(operator, numExpr, semanticType, rawArgs);
+            return buildPredicate(operator, numExpr, semanticType, args);
         }
 
         // non-numeric: compare as plain string, bind raw values
-        return buildPredicate(operator, strExpr, String.class, rawArgs);
+        return buildPredicate(operator, strExpr, String.class, args);
     }
 
     private Expression<String> buildJsonValueExpr(String jsonPath) {
@@ -192,40 +200,40 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Predicate buildPredicate(RsqlOperator op, Expression<?> expr,
-                                     Class<?> type, List<String> args) {
-        String  first    = args.getFirst();
-        boolean wildcard = first.contains("*");
+                                     Class<?> type, List<Argument> args) {
+        Argument first    = args.getFirst();
+        boolean  wildcard = first.hasWildcard();
 
         return switch (op) {
             case EQ -> wildcard
-                    ? cb.like(expr.as(String.class), first.replace("*", "%"))
-                    : cb.equal(expr, bindValue(first, type));
+                    ? cb.like(expr.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE)
+                    : cb.equal(expr, bindValue(first.value(), type));
             case NEQ -> wildcard
-                    ? cb.notLike(expr.as(String.class), first.replace("*", "%"))
-                    : cb.notEqual(expr, bindValue(first, type));
+                    ? cb.notLike(expr.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE)
+                    : cb.notEqual(expr, bindValue(first.value(), type));
             case GT -> cb.greaterThan(
                     (Expression<Comparable>) expr,
-                    (Comparable) bindValue(first, type));
+                    (Comparable) bindValue(first.value(), type));
             case GE -> cb.greaterThanOrEqualTo(
                     (Expression<Comparable>) expr,
-                    (Comparable) bindValue(first, type));
+                    (Comparable) bindValue(first.value(), type));
             case LT -> cb.lessThan(
                     (Expression<Comparable>) expr,
-                    (Comparable) bindValue(first, type));
+                    (Comparable) bindValue(first.value(), type));
             case LE -> cb.lessThanOrEqualTo(
                     (Expression<Comparable>) expr,
-                    (Comparable) bindValue(first, type));
+                    (Comparable) bindValue(first.value(), type));
             case IN -> {
                 CriteriaBuilder.In<Object> in = cb.in(expr);
-                args.stream().map(a -> bindValue(a, type)).forEach(in::value);
+                args.stream().map(a -> bindValue(a.value(), type)).forEach(in::value);
                 yield in;
             }
             case OUT -> {
                 CriteriaBuilder.In<Object> in = cb.in(expr);
-                args.stream().map(a -> bindValue(a, type)).forEach(in::value);
+                args.stream().map(a -> bindValue(a.value(), type)).forEach(in::value);
                 yield cb.not(in);
             }
-            case LIKE -> cb.like(expr.as(String.class), first.replace("*", "%"));
+            case LIKE -> cb.like(expr.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE);
         };
     }
 
@@ -251,23 +259,5 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
 
     private static boolean isOrdering(RsqlOperator op) {
         return switch (op) { case GT, GE, LT, LE -> true; default -> false; };
-    }
-
-    private List<String> extractArguments(RsqlParser.ArgumentsContext ctx) {
-        List<String> result = new ArrayList<>();
-        if (ctx.commaSepArguments() != null)
-            ctx.commaSepArguments().argument().forEach(a -> result.add(stripQuotes(a.getText())));
-        else
-            result.add(stripQuotes(ctx.argument().getText()));
-        return result;
-    }
-
-    private static String stripQuotes(String s) {
-        if (s.length() >= 2) {
-            char f = s.charAt(0);
-            if ((f == '\'' || f == '"') && s.charAt(s.length() - 1) == f)
-                return s.substring(1, s.length() - 1);
-        }
-        return s;
     }
 }
