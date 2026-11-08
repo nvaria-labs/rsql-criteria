@@ -2,6 +2,10 @@
 /.idea
 /.gradle
 /build
+**/build/
+bin/
+# ANTLR output of the IDE plugin; Gradle generates into build/
+src/main/gen/
 
 # AWS User-specific
 .idea/**/aws.xml

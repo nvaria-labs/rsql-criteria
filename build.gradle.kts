@@ -128,9 +128,10 @@ tasks.named<Test>("test") {
 
 
 tasks.generateGrammarSource {
-    outputDirectory = file(layout.projectDirectory.dir("src/main/java/ch/nvaria/generated"))
+    // Generated into build/ (plugin default); packageName also lays out the package directories
     maxHeapSize = "64m"
-    arguments = arguments + listOf("-visitor", "-long-messages", "-package" ,"ch.nvaria.generated")
+    packageName = "ch.nvaria.generated"
+    arguments = arguments + listOf("-visitor", "-long-messages")
 }
 
 tasks.named<Jar>("sourcesJar") {
