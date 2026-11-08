@@ -1,3 +1,19 @@
+/*
+ * Copyright 2024 Nvaria GmbH.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package visitors;
 
 import jakarta.persistence.EntityManager;
@@ -11,7 +27,8 @@ import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import visitor.RsqlToCriteria;
+import ch.nvaria.rsql.JsonLayout;
+import ch.nvaria.rsql.RsqlToCriteria;
 
 import java.util.List;
 import java.util.Map;
@@ -61,7 +78,7 @@ public class AvroTest {
         EntityManager em = emf.createEntityManager();
         CriteriaQuery<Product> cq   = cb.createQuery(Product.class);
         Root<Product> root = cq.from(Product.class);
-        Predicate predicate = RsqlToCriteria.parseJsonColumn(rsql, cb, root, "car", fieldTypes, true);
+        Predicate predicate = RsqlToCriteria.parseJsonColumn(rsql, cb, root, "car", fieldTypes, JsonLayout.AVRO);
         cq.where(predicate);
         TypedQuery<Product> q = em.createQuery(cq);
         List<Product> results = q.getResultList();

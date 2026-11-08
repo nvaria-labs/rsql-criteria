@@ -16,33 +16,55 @@
 
 package visitors;
 
-import ch.nvaria.generated.RsqlLexer;
-import ch.nvaria.generated.RsqlParser;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CodePointCharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.Lexer;
+import ch.nvaria.rsql.RsqlParseException;
+import ch.nvaria.rsql.internal.RsqlParsing;
+import ch.nvaria.rsql.internal.parser.RsqlParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+/** Grammar-level tests: syntax only, no JPA. */
 class RsqlParserTest {
 
-    public static final String testString1 = "name==\"Kill Bill\";year=gt=2003";
-    public static final String testString2 = "name=='Kill Bill' and year>2003";
-    public static final String testString3 = "genres=in=(sci-fi,action);(director=='Christopher Nolan',actor==*Bale);year=ge=2000";
-    public static final String testString4 = "genres=in=(sci-fi,action) and (director=='Christopher Nolan' or actor==*Bale) and year>=2000";
-    public static final String testString5 = "director.lastName==Nolan;year=ge=2000;year=lt=2010";
-    public static final String testString6 = "director.lastName==Nolan and year>=2000 and year<2010";
-    public static final String testString7 = "genres=in=(sci-fi,action);genres=out=(romance,animated,horror),director==Que*Tarantino";
-    public static final String testString8 = "genres=in=(sci-fi,action) and genres=out=(romance,animated,horror) or director==Que*Tarantino";
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "name==\"Kill Bill\";year=gt=2003",
+            "name=='Kill Bill' and year>2003",
+            "genres=in=(sci-fi,action);(director=='Christopher Nolan',actor==*Bale);year=ge=2000",
+            "genres=in=(sci-fi,action) and (director=='Christopher Nolan' or actor==*Bale) and year>=2000",
+            "director.lastName==Nolan;year=ge=2000;year=lt=2010",
+            "director.lastName==Nolan and year>=2000 and year<2010",
+            "genres=in=(sci-fi,action);genres=out=(romance,animated,horror),director==Que*Tarantino",
+            "genres=in=(sci-fi,action) and genres=out=(romance,animated,horror) or director==Que*Tarantino",
+    })
+    void validQueriesParse(String rsql) {
+        RsqlParsing.parse(rsql);
+    }
 
     @Test
-    void parseStringTest(){
-        CodePointCharStream rsqlcharstream =  CharStreams.fromString(testString6);
-        Lexer lexer = new RsqlLexer(rsqlcharstream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        RsqlParser parser = new RsqlParser(tokenStream);
+    void andBindsTighterThanOr() {
+        RsqlParser.InputContext tree = RsqlParsing.parse("a==1;b==2,c==3");
+        assertThat(tree.or().and(), hasSize(2));
+        assertThat(tree.or().and(0).constraint(), hasSize(2));
+        assertThat(tree.or().and(1).constraint(), hasSize(1));
+    }
 
-        new RsqlPrinter().enterAnd(parser.and());
+    @Test
+    void keywordAndIsEquivalentToSemicolon() {
+        RsqlParser.InputContext tree = RsqlParsing.parse("director.lastName==Nolan and year>=2000 and year<2010");
+        assertThat(tree.or().and(), hasSize(1));
+        assertThat(tree.or().and(0).constraint(), hasSize(3));
+        assertThat(tree.or().and(0).constraint(2).comparison().operator().getText(), is("<"));
+    }
 
-     }
+    @ParameterizedTest
+    @ValueSource(strings = {"", "name==", "==x", "name==x;", "(name==x", "name==x)", "name=in=(a,b"})
+    void malformedQueriesAreRejected(String rsql) {
+        assertThrows(RsqlParseException.class, () -> RsqlParsing.parse(rsql));
+    }
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2024 Nvaria GmbH.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package visitors;
 
 import jakarta.persistence.EntityManager;
@@ -6,13 +22,14 @@ import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import visitor.RsqlParseException;
-import visitor.RsqlToCriteria;
+import ch.nvaria.rsql.RsqlParseException;
+import ch.nvaria.rsql.RsqlToCriteria;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -121,7 +138,6 @@ class RsqlCriteriaTest {
     @Test
     void altOperator_ge() {
         String rsql = "year>=2003";
-         query(rsql).stream().map(p -> p.getName()).forEach(System.out::println);
         assertThat(query(rsql), hasSize(4));
     }
 
@@ -263,6 +279,31 @@ class RsqlCriteriaTest {
     @Test
     void unknownOperator_throws() {
         assertThrows(RsqlParseException.class, () -> query("year=foo=2003"));
+    }
+
+    // --- joins ---
+
+    @Test
+    void selectorsResolveAgainstAJoin() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            CriteriaQuery<Movie> cq = cb.createQuery(Movie.class);
+            Root<Movie> root = cq.from(Movie.class);
+            Join<Movie, Director> director = root.join("director");
+            cq.where(cb.and(
+                    RsqlToCriteria.parse("lastName==Nolan", cb, director),
+                    RsqlToCriteria.parse("year=lt=2012", cb, root)));
+            assertThat(em.createQuery(cq).getResultList(), hasSize(2));
+        } finally {
+            em.close();
+        }
+    }
+
+    @Test
+    void unknownFieldOnAJoin_throws() {
+        CriteriaQuery<Movie> cq = cb.createQuery(Movie.class);
+        Join<Movie, Director> director = cq.from(Movie.class).join("director");
+        assertThrows(RsqlParseException.class, () -> RsqlToCriteria.parse("year==2008", cb, director));
     }
 
     @Test

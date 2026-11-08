@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Nvaria GmbH.
+ * Copyright 2024 Nvaria GmbH.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,49 @@
  * limitations under the License.
  */
 
-package visitor;
+package ch.nvaria.rsql.internal;
 
-import ch.nvaria.generated.RsqlParser;
-import ch.nvaria.generated.RsqlParserBaseVisitor;
+import ch.nvaria.rsql.RsqlParseException;
+import ch.nvaria.rsql.internal.parser.RsqlParser;
+import ch.nvaria.rsql.internal.parser.RsqlParserBaseVisitor;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
 import jakarta.persistence.metamodel.Attribute;
+import jakarta.persistence.metamodel.Bindable;
 import jakarta.persistence.metamodel.ManagedType;
+import jakarta.persistence.metamodel.PluralAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class JPACriteriaRsqlVistor<T> extends RsqlParserBaseVisitor<Predicate> {
+/**
+ * Maps each RSQL selector to an entity attribute path, validated against the JPA metamodel.
+ */
+public final class JpaCriteriaVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
     private final CriteriaBuilder cb;
-    private final Root<T> root;
+    private final From<?, T> root;
 
-    public JPACriteriaRsqlVistor(CriteriaBuilder cb, Root<T> root) {
+    public JpaCriteriaVisitor(CriteriaBuilder cb, From<?, T> root) {
         this.cb = cb;
         this.root = root;
+    }
+
+    /** The managed type behind a root (an entity) or a join (the joined attribute's type). */
+    private static ManagedType<?> managedTypeOf(From<?, ?> from) {
+        Bindable<?> model = from.getModel();
+        if (model instanceof ManagedType<?> managed) return managed;
+        if (model instanceof SingularAttribute<?, ?> sa && sa.getType() instanceof ManagedType<?> managed) {
+            return managed;
+        }
+        if (model instanceof PluralAttribute<?, ?, ?> pa && pa.getElementType() instanceof ManagedType<?> managed) {
+            return managed;
+        }
+        throw new IllegalArgumentException("Not an entity or embeddable path: " + from.getJavaType().getName());
     }
 
     @Override
@@ -78,7 +97,7 @@ public class JPACriteriaRsqlVistor<T> extends RsqlParserBaseVisitor<Predicate> {
         // 1. Resolve path via metamodel (validates each segment, supports dot notation)
         String selectorText = ctx.selector().UNRESERVED_STR().getText();
         Path path = root;
-        ManagedType<?> currentType = root.getModel();
+        ManagedType<?> currentType = managedTypeOf(root);
         for (String segment : selectorText.split("\\.")) {
             Attribute<?, ?> attr;
             try {
@@ -88,8 +107,9 @@ public class JPACriteriaRsqlVistor<T> extends RsqlParserBaseVisitor<Predicate> {
                         "Unknown field '" + segment + "' on " + currentType.getJavaType().getSimpleName(), e);
             }
             path = path.get(segment);
-            if (attr instanceof SingularAttribute<?, ?> sa && sa.isAssociation()) {
-                currentType = (ManagedType<?>) sa.getType();
+            // to-one associations and embeddables can be navigated further
+            if (attr instanceof SingularAttribute<?, ?> sa && sa.getType() instanceof ManagedType<?> next) {
+                currentType = next;
             }
         }
 
@@ -120,30 +140,30 @@ public class JPACriteriaRsqlVistor<T> extends RsqlParserBaseVisitor<Predicate> {
         return switch (operator) {
             case EQ -> hasWildcard
                     ? cb.like(path.as(String.class), firstRaw.replace("*", "%"))
-                    : cb.equal(path, RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    : cb.equal(path, TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case NEQ -> hasWildcard
                     ? cb.notLike(path.as(String.class), firstRaw.replace("*", "%"))
-                    : cb.notEqual(path, RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    : cb.notEqual(path, TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case GT -> cb.greaterThan(
                     (Expression<Comparable>) path,
-                    (Comparable) RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case GE -> cb.greaterThanOrEqualTo(
                     (Expression<Comparable>) path,
-                    (Comparable) RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case LT -> cb.lessThan(
                     (Expression<Comparable>) path,
-                    (Comparable) RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case LE -> cb.lessThanOrEqualTo(
                     (Expression<Comparable>) path,
-                    (Comparable) RsqlTypeCoercion.coerce(firstRaw, path.getJavaType()));
+                    (Comparable) TypeCoercion.coerce(firstRaw, path.getJavaType()));
             case IN -> {
                 CriteriaBuilder.In<Object> in = cb.in(path);
-                for (String raw : rawArgs) in.value(RsqlTypeCoercion.coerce(raw, path.getJavaType()));
+                for (String raw : rawArgs) in.value(TypeCoercion.coerce(raw, path.getJavaType()));
                 yield in;
             }
             case OUT -> {
                 CriteriaBuilder.In<Object> in = cb.in(path);
-                for (String raw : rawArgs) in.value(RsqlTypeCoercion.coerce(raw, path.getJavaType()));
+                for (String raw : rawArgs) in.value(TypeCoercion.coerce(raw, path.getJavaType()));
                 yield cb.not(in);
             }
             case LIKE -> cb.like(path.as(String.class), firstRaw.replace("*", "%"));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Nvaria GmbH.
+ * Copyright 2024 Nvaria GmbH.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package visitor;
+package ch.nvaria.rsql.internal;
 
-import ch.nvaria.generated.RsqlParser;
-import ch.nvaria.generated.RsqlParserBaseVisitor;
+import ch.nvaria.rsql.JsonLayout;
+import ch.nvaria.rsql.RsqlParseException;
+import ch.nvaria.rsql.internal.parser.RsqlParser;
+import ch.nvaria.rsql.internal.parser.RsqlParserBaseVisitor;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.From;
@@ -39,14 +41,14 @@ import java.util.Map;
  * <ol>
  *   <li>Explicit entry in {@code fieldTypes} map</li>
  *   <li>For ordering operators (GT/GE/LT/LE): auto-inferred from the
- *       argument value via {@link RsqlTypeCoercion#inferComparableType}</li>
+ *       argument value via {@link TypeCoercion#inferComparableType}</li>
  *   <li>Default: {@code String.class}</li>
  * </ol>
  *
  * <p>Boolean fields support only EQ / NEQ. String fields reject ordering
  * operators (GT/GE/LT/LE) with a clear {@link RsqlParseException}.
  */
-public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
+public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
 
     private static final String[] AVRO_TYPE_KEYS = { "int", "long", "float", "double", "string", "boolean" };
     private static final String JSON_VALUE = "json_value";
@@ -55,7 +57,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
     private final From<?, T> from;
     private final String jsonColumnField;
     private final Map<String, Class<?>> fieldTypes;
-    private final boolean avroMode;
+    private final JsonLayout layout;
     /**
      * The scalar JSON-extraction function to render. On PostgreSQL the built-in {@code json_value}
      * renders as {@code json_value(col, path RETURNING jsonb) #>> '{}'}, which misfires in filter
@@ -65,15 +67,13 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
      */
     private final String jsonValueFn;
 
-    public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
-                                 String jsonColumnField,
-                                 Map<String, Class<?>> fieldTypes,
-                                 boolean avroMode) {
+    public JsonColumnVisitor(CriteriaBuilder cb, From<?, T> from, String jsonColumnField,
+                             Map<String, Class<?>> fieldTypes, JsonLayout layout) {
         this.cb = cb;
         this.from = from;
         this.jsonColumnField = jsonColumnField;
         this.fieldTypes = fieldTypes;
-        this.avroMode = avroMode;
+        this.layout = layout;
         this.jsonValueFn = isPostgres(cb) ? JsonValueFunctionContributor.JSON_VALUE_TEXT : JSON_VALUE;
     }
 
@@ -82,17 +82,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
                 && nb.getQueryEngine().getDialect() instanceof PostgreSQLDialect;
     }
 
-    public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from,
-                                 String jsonColumnField,
-                                 Map<String, Class<?>> fieldTypes) {
-        this(cb, from, jsonColumnField, fieldTypes, false);
-    }
-
-    public JsonColumnRsqlVisitor(CriteriaBuilder cb, From<?, T> from, String jsonColumnField) {
-        this(cb, from, jsonColumnField, Map.of(), false);
-    }
-
-    // --- tree traversal (identical to JPACriteriaRsqlVistor) ---
+    // --- tree traversal (identical to JpaCriteriaVisitor) ---
 
     @Override
     public Predicate visitInput(RsqlParser.InputContext ctx) {
@@ -138,7 +128,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
         Class<?> semanticType = fieldTypes.getOrDefault(selector, null);
         if (semanticType == null) {
             semanticType = ordering
-                ? RsqlTypeCoercion.inferComparableType(selector, rawArgs.getFirst())
+                ? TypeCoercion.inferComparableType(selector, rawArgs.getFirst())
                 : String.class;
         }
 
@@ -169,11 +159,11 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
     }
 
     private Expression<String> buildJsonValueExpr(String jsonPath) {
-        if (!avroMode) {
+        if (layout == JsonLayout.PLAIN) {
             return cb.function(jsonValueFn, String.class,
                 from.get(jsonColumnField), cb.literal(jsonPath));
         }
-        // In avroMode, union-typed fields are wrapped: {"int": 500}. Try each Avro
+        // In the Avro layout, union-typed fields are wrapped: {"int": 500}. Try each Avro
         // primitive type key first, then fall back to the plain path for non-wrapped fields.
         CriteriaBuilder.Coalesce<String> coalesce = cb.coalesce();
         for (String key : AVRO_TYPE_KEYS) {
@@ -247,7 +237,7 @@ public class JsonColumnRsqlVisitor<T> extends RsqlParserBaseVisitor<Predicate> {
      * the JSON extraction always produces VARCHAR on H2.
      */
     private static Object bindValue(String raw, Class<?> type) {
-        if (isNumeric(type)) return RsqlTypeCoercion.coerce(raw, type);
+        if (isNumeric(type)) return TypeCoercion.coerce(raw, type);
         return raw; // dates (ISO sorts correctly), booleans ("true"/"false"), strings
     }
 

@@ -130,7 +130,7 @@ tasks.named<Test>("test") {
 tasks.generateGrammarSource {
     // Generated into build/ (plugin default); packageName also lays out the package directories
     maxHeapSize = "64m"
-    packageName = "ch.nvaria.generated"
+    packageName = "ch.nvaria.rsql.internal.parser"
     arguments = arguments + listOf("-visitor", "-long-messages")
 }
 
@@ -165,7 +165,7 @@ tasks.jacocoTestReport {
     dependsOn(tasks.test) // tests are required to run before generating the report
     classDirectories.setFrom(
         sourceSets.main.get().output.asFileTree.matching {
-            exclude("ch/nvaria/generated/*")
+            exclude("ch/nvaria/rsql/internal/parser/*")
         }
     )
 }
@@ -203,8 +203,8 @@ license {
     rule(file("codeformat/ASF-2.0"))
 
     // Exclude/include certain file types, defaults are provided to easily deal with Java/Kotlin projects.
-    include("src/main/java/visitor/*.java") // Include Java files into the file resolution.
+    include("**/*.java")
     exclude("**/*.properties") // Exclude properties files from the file resolution.
-    exclude("src/main/java/ch/nvaria/generated/*")
+    exclude("ch/nvaria/rsql/internal/parser/**")
     exclude("src/main/java/antlr/*")
 }

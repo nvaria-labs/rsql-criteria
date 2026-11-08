@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package visitor;
+package ch.nvaria.rsql.internal;
+
+import ch.nvaria.rsql.RsqlParseException;
 
 import java.util.Set;
 
-public enum RsqlOperator {
+enum RsqlOperator {
 
     EQ(Set.of("==")),
     NEQ(Set.of("!=")),
@@ -36,7 +38,7 @@ public enum RsqlOperator {
         this.aliases = aliases;
     }
 
-    public static RsqlOperator fromText(String text) {
+    static RsqlOperator fromText(String text) {
         for (RsqlOperator op : values()) {
             if (op.aliases.contains(text)) {
                 return op;

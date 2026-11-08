@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package visitor;
+package ch.nvaria.rsql.internal;
+
+import ch.nvaria.rsql.RsqlParseException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,9 +27,9 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-public final class RsqlTypeCoercion {
+final class TypeCoercion {
 
-    private RsqlTypeCoercion() {}
+    private TypeCoercion() {}
 
     /**
      * Registry of raw-String parsers keyed by target type. Primitive and boxed classes
@@ -54,7 +56,7 @@ public final class RsqlTypeCoercion {
     );
 
     @SuppressWarnings("unchecked")
-    public static Object coerce(String raw, Class<?> type) {
+    static Object coerce(String raw, Class<?> type) {
         Function<String, Object> parser = COERCERS.get(type);
         try {
             if (parser != null)  return parser.apply(raw);
@@ -81,7 +83,7 @@ public final class RsqlTypeCoercion {
      * selectors used with an ordering operator (GT/GE/LT/LE). Matches by regex rather
      * than trial-parsing, so the common "not orderable" reject path costs no exceptions.
      */
-    public static Class<?> inferComparableType(String selector, String raw) {
+    static Class<?> inferComparableType(String selector, String raw) {
         if (OFFSET_DATETIME.matcher(raw).matches()) return OffsetDateTime.class;
         if (LOCAL_DATETIME.matcher(raw).matches())  return LocalDateTime.class;
         if (LOCAL_DATE.matcher(raw).matches())      return LocalDate.class;

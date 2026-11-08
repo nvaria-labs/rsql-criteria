@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Nvaria GmbH.
+ * Copyright 2024 Nvaria GmbH.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package visitor;
+package ch.nvaria.rsql.internal;
 
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.FunctionContributor;
@@ -31,7 +31,7 @@ import org.hibernate.type.StandardBasicTypes;
  * PostgreSQL&nbsp;18.x: a row that matches when scanned alone is dropped within the full-table scan
  * (the extracted value projects correctly, but the equality predicate misfires). The native
  * {@code json_value(col, path)} form (default {@code RETURNING varchar}) is unaffected, so on
- * PostgreSQL {@link JsonColumnRsqlVisitor} calls this {@code json_value_text} instead.
+ * PostgreSQL {@link JsonColumnVisitor} calls this {@code json_value_text} instead.
  *
  * <p>The buggy {@code RETURNING jsonb} rendering is unique to Hibernate's PostgreSQL dialect, so no
  * other database needs this. On every other dialect (H2, MySQL, MSSQL, Oracle, DB2, …) the visitor
@@ -41,7 +41,7 @@ import org.hibernate.type.StandardBasicTypes;
  */
 public class JsonValueFunctionContributor implements FunctionContributor {
 
-    /** Name the visitor uses on PostgreSQL; kept in sync with {@link JsonColumnRsqlVisitor}. */
+    /** Name the visitor uses on PostgreSQL; kept in sync with {@link JsonColumnVisitor}. */
     static final String JSON_VALUE_TEXT = "json_value_text";
 
     @Override
