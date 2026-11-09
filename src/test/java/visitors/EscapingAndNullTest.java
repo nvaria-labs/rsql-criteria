@@ -100,6 +100,20 @@ class EscapingAndNullTest {
             "name==\"null\"                     | null",
             "releaseDate==null;name=='5*'       | ``",
             "releaseDate!=null                  | 50% off;500 off",
+            // null keyword in lists: IS NULL / IS NOT NULL, in any position
+            "name=in=(axb,null)                 | axb",
+            "name=in=(axb,'null')               | axb;null",
+            "releaseDate=in=(2001-01-01,null);name=in=(axb,'50% off') | 50% off;axb",
+            "releaseDate=in=(null,2001-01-01);name=in=(axb,'50% off') | 50% off;axb",
+            "releaseDate=in=(2001-01-02,null);name==*off              | ``",
+            "releaseDate=in=(null);name=in=(axb,'50% off')            | axb",
+            "releaseDate=in=(null,NULL);name=in=(axb,'50% off')       | axb",
+            "releaseDate=out=(2001-01-02,null)  | 50% off;500 off",
+            "releaseDate=out=(null)             | 50% off;500 off",
+            "name=out=(axb,null);name==a*       | a_b;a*b;a\\b",
+            "name=ilike='50%*'                  | 50% off",
+            "name=ilike=A_B                     | a_b",
+            "name=ilike=AXB,name=ilike='O\\'BRIEN' | O'Brien;axb",
     })
     void entityAttributes(String rsql, String expected) {
         assertThat(movies(rsql).stream().sorted().toList(), matches(expected));
@@ -114,6 +128,14 @@ class EscapingAndNullTest {
             "note!='null'        | P3;P5;P6",
             "note=='50%*'        | P5",
             "note=like='5*\\%*'  | P5",
+            "note=in=(x,null)    | P1;P2;P3",
+            "note=in=(null,x)    | P1;P2;P3",
+            "note=in=(null)      | P1;P2",
+            "note=in=(x,'null')  | P3;P4",
+            "note=out=(x,null)   | P4;P5;P6",
+            "note=out=(null)     | P3;P4;P5;P6",
+            "note=ilike=X        | P3",
+            "note=ilike='50%*'   | P5",
     })
     void jsonColumn(String rsql, String expected) {
         assertThat(products(rsql).stream().sorted().toList(), matches(expected));

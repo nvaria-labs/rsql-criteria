@@ -12,6 +12,7 @@ import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import ch.nvaria.rsql.RsqlLimits;
 import ch.nvaria.rsql.RsqlParseException;
 import ch.nvaria.rsql.RsqlToCriteria;
 
@@ -20,8 +21,10 @@ import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RsqlCriteriaTest {
 
@@ -45,6 +48,7 @@ class RsqlCriteriaTest {
         darkKnight.setReleaseDate(LocalDate.of(2008, 7, 18));
         Movie inception = new Movie("Inception", 2010, "sci-fi", "Leonardo DiCaprio", nolan);
         inception.setReleaseDate(LocalDate.of(2010, 7, 16));
+        inception.setFeatured(true);
         em.persist(darkKnight);
         em.persist(inception);
         em.persist(new Movie("Interstellar",     2014, "sci-fi",  "Matthew McConaughey",   nolan));
@@ -313,5 +317,124 @@ class RsqlCriteriaTest {
         Root<Movie> root = cq.from(Movie.class);
         Predicate p = RsqlToCriteria.parse("year=gt=2000", cb, root);
         assertNotNull(p);
+    }
+
+    // --- booleans ---
+
+    @Test
+    void boolean_true_and_false() {
+        assertThat(query("featured==true"), hasSize(1));
+        assertThat(query("featured==FALSE"), hasSize(4));
+        assertThat(query("featured!=true"), hasSize(4));
+    }
+
+    @Test
+    void boolean_rejects_other_values() {
+        assertThrows(RsqlParseException.class, () -> query("featured==yes"));
+        assertThrows(RsqlParseException.class, () -> query("featured==1"));
+        assertThrows(RsqlParseException.class, () -> query("featured=in=(true,maybe)"));
+    }
+
+    // --- paths that cannot be navigated ---
+
+    @Test
+    void collection_attribute_is_rejected() {
+        RsqlParseException e = assertThrows(RsqlParseException.class, () -> query("tags==classic"));
+        assertEquals("Field 'tags' on Movie is a collection and cannot be used", e.getMessage());
+    }
+
+    @Test
+    void path_through_collection_is_rejected() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            CriteriaQuery<Director> cq = cb.createQuery(Director.class);
+            Root<Director> director = cq.from(Director.class);
+            RsqlParseException e = assertThrows(RsqlParseException.class,
+                    () -> RsqlToCriteria.parse("movies.name==Inception", cb, director));
+            assertEquals("Field 'movies' on Director is a collection and cannot be used", e.getMessage());
+        } finally {
+            em.close();
+        }
+    }
+
+    @Test
+    void path_through_basic_attribute_is_rejected() {
+        // "name" exists on Movie, so it must not be resolved there again
+        RsqlParseException e = assertThrows(RsqlParseException.class, () -> query("year.name==x"));
+        assertEquals("Field 'year' on Movie has no fields", e.getMessage());
+        assertThrows(RsqlParseException.class, () -> query("director.lastName.length==5"));
+    }
+
+    // --- limits and messages ---
+
+    @Test
+    void limits_apply_through_public_api() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Root<Movie> root = cb.createQuery(Movie.class).from(Movie.class);
+            RsqlLimits limits = RsqlLimits.DEFAULTS.withMaxInArguments(2);
+            assertNotNull(RsqlToCriteria.parse("genre=in=(action,crime)", cb, root, limits));
+            assertThrows(RsqlParseException.class,
+                    () -> RsqlToCriteria.parse("genre=in=(action,crime,drama)", cb, root, limits));
+            assertThrows(RsqlParseException.class,
+                    () -> RsqlToCriteria.parse("(".repeat(17) + "year==1" + ")".repeat(17), cb, root));
+        } finally {
+            em.close();
+        }
+    }
+
+    @Test
+    void comparing_an_association_names_only_the_simple_type() {
+        RsqlParseException e = assertThrows(RsqlParseException.class, () -> query("director==5"));
+        assertEquals("Fields of type Director cannot be compared to a value", e.getMessage());
+        assertThat(query("director!=null"), hasSize(5));
+    }
+
+    // --- where the error is ---
+
+    @Test
+    void semantic_errors_name_selector_and_position() {
+        RsqlParseException unknown = assertThrows(RsqlParseException.class, () -> query("year==2000;yaer==2001"));
+        assertEquals("Unknown field 'yaer' on Movie", unknown.getMessage());
+        assertEquals("yaer", unknown.getSelector().orElseThrow());
+        assertEquals(12, unknown.getPosition().orElseThrow());
+
+        RsqlParseException coercion = assertThrows(RsqlParseException.class, () -> query("name==x,(director.lastName==N;year==abc)"));
+        assertEquals("year", coercion.getSelector().orElseThrow());
+        assertEquals(31, coercion.getPosition().orElseThrow());
+
+        RsqlParseException operator = assertThrows(RsqlParseException.class, () -> query("year=foo=2003"));
+        assertEquals("year", operator.getSelector().orElseThrow());
+        assertEquals(1, operator.getPosition().orElseThrow());
+    }
+
+    @Test
+    void query_level_errors_have_no_selector() {
+        RsqlParseException e = assertThrows(RsqlParseException.class,
+                () -> query("(".repeat(17) + "year==1" + ")".repeat(17)));
+        assertTrue(e.getSelector().isEmpty());
+        assertTrue(e.getPosition().isEmpty());
+    }
+
+    // --- case-insensitive matching and whitespace ---
+
+    @Test
+    void ilike_ignores_case() {
+        assertThat(query("name=like=inception"), hasSize(0));   // H2 compares case-sensitively
+        assertThat(query("name=ilike=inception"), hasSize(1));
+        assertThat(query("name=ilike=*KNIGHT*"), hasSize(1));
+        assertThat(query("director.lastName=ilike=nOlAn"), hasSize(3));
+        assertThat(query("name=ilike=inception OR name=ilike='kill bill'"), hasSize(2));
+    }
+
+    @Test
+    void ilike_rejects_null() {
+        assertThrows(RsqlParseException.class, () -> query("name=ilike=null"));
+    }
+
+    @Test
+    void line_break_before_separator_does_not_change_the_value() {
+        assertThat(query("name==Inception\n;year==2010"), hasSize(1));
+        assertThat(query("name==Inception\r\nAND\r\nyear==2010"), hasSize(1));
     }
 }

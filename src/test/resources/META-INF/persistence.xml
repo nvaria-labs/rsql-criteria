@@ -9,6 +9,7 @@
         <class>visitors.Director</class>
         <class>visitors.Movie</class>
         <class>visitors.Product</class>
+        <class>visitors.TypedValues</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <properties>
             <property name="jakarta.persistence.jdbc.driver"   value="org.h2.Driver"/>
@@ -17,6 +18,22 @@
             <property name="jakarta.persistence.jdbc.password" value=""/>
             <property name="hibernate.dialect"                 value="org.hibernate.dialect.H2Dialect"/>
             <property name="hibernate.session_factory.statement_inspector" value="visitors.SqlCapture"/>
+            <property name="hibernate.hbm2ddl.auto"            value="create-drop"/>
+            <property name="hibernate.show_sql"                value="false"/>
+        </properties>
+    </persistence-unit>
+
+    <persistence-unit name="hidden-pu" transaction-type="RESOURCE_LOCAL">
+        <class>visitors.HiddenStudio</class>
+        <class>visitors.HiddenFilm</class>
+        <class>visitors.HiddenCritic</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver"   value="org.h2.Driver"/>
+            <property name="jakarta.persistence.jdbc.url"      value="jdbc:h2:mem:hiddendb;DB_CLOSE_DELAY=-1"/>
+            <property name="jakarta.persistence.jdbc.user"     value="sa"/>
+            <property name="jakarta.persistence.jdbc.password" value=""/>
+            <property name="hibernate.dialect"                 value="org.hibernate.dialect.H2Dialect"/>
             <property name="hibernate.hbm2ddl.auto"            value="create-drop"/>
             <property name="hibernate.show_sql"                value="false"/>
         </properties>

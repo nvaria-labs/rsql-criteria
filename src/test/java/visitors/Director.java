@@ -4,7 +4,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "director")
@@ -16,6 +20,9 @@ public class Director {
 
     private String firstName;
     private String lastName;
+
+    @OneToMany(mappedBy = "director")
+    private List<Movie> movies = new ArrayList<>();
 
     public Director() {}
 

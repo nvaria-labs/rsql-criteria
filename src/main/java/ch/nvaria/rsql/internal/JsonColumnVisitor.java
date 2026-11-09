@@ -14,6 +14,7 @@ import org.hibernate.query.criteria.JpaExpression;
 import org.hibernate.query.sqm.NodeBuilder;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -100,6 +101,15 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
 
     @Override
     public Predicate visitComparison(RsqlParser.ComparisonContext ctx) {
+        try {
+            return comparison(ctx);
+        } catch (RsqlParseException e) {
+            // name the comparison the error occurred in, for clients that point at it
+            throw e.inComparison(ctx.selector().getText(), RsqlParsing.position(ctx.getStart()));
+        }
+    }
+
+    private Predicate comparison(RsqlParser.ComparisonContext ctx) {
         String selector = ctx.selector().UNRESERVED_STR().getText();
         String jsonPath  = selector.startsWith("$.") ? selector : "$." + selector;
 
@@ -107,8 +117,11 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
         List<Argument> args   = Argument.extract(ctx.arguments());
         boolean      ordering = isOrdering(operator);
 
-        // A missing key and JSON null both extract as SQL NULL, so ==null matches either
-        if (args.getFirst().isNull()) {
+        boolean      list     = operator == RsqlOperator.IN || operator == RsqlOperator.OUT;
+
+        // A missing key and JSON null both extract as SQL NULL, so ==null matches either.
+        // Lists handle the null keyword per argument, in buildPredicate.
+        if (!list && args.getFirst().isNull()) {
             return switch (operator) {
                 case EQ  -> cb.isNull(buildJsonValueExpr(jsonPath));
                 case NEQ -> cb.isNotNull(buildJsonValueExpr(jsonPath));
@@ -207,17 +220,23 @@ public final class JsonColumnVisitor<T> extends RsqlParserBaseVisitor<Predicate>
             case LE -> cb.lessThanOrEqualTo(
                     (Expression<Comparable>) expr,
                     (Comparable) bindValue(first.value(), type));
-            case IN -> {
-                CriteriaBuilder.In<Object> in = cb.in(expr);
-                args.stream().map(a -> bindValue(a.value(), type)).forEach(in::value);
-                yield in;
-            }
-            case OUT -> {
-                CriteriaBuilder.In<Object> in = cb.in(expr);
-                args.stream().map(a -> bindValue(a.value(), type)).forEach(in::value);
-                yield cb.not(in);
+            case IN, OUT -> {
+                // the null keyword adds IS NULL / IS NOT NULL: SQL's IN (..., NULL) never matches null
+                boolean in = op == RsqlOperator.IN;
+                List<Argument> values = Argument.values(args);
+                Predicate nullCheck = in ? cb.isNull(expr) : cb.isNotNull(expr);
+                if (values.isEmpty()) yield nullCheck;
+                CriteriaBuilder.In<Object> list = cb.in(expr);
+                values.stream().map(a -> bindValue(a.value(), type)).forEach(list::value);
+                Predicate listCheck = in ? list : cb.not(list);
+                if (values.size() == args.size()) yield listCheck;
+                yield in ? cb.or(listCheck, nullCheck) : cb.and(listCheck, nullCheck);
             }
             case LIKE -> cb.like(expr.as(String.class), first.likePattern(), Argument.LIKE_ESCAPE);
+            // the pattern is lowercased here rather than with lower() in SQL, so it stays a bound
+            // parameter instead of a literal in the SQL text
+            case ILIKE -> cb.like(cb.lower(expr.as(String.class)), first.likePattern().toLowerCase(Locale.ROOT),
+                    Argument.LIKE_ESCAPE);
         };
     }
 

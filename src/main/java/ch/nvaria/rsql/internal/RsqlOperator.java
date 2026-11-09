@@ -14,7 +14,8 @@ enum RsqlOperator {
     LE(Set.of("=le=", "<=")),
     IN(Set.of("=in=")),
     OUT(Set.of("=out=")),
-    LIKE(Set.of("=like="));
+    LIKE(Set.of("=like=")),
+    ILIKE(Set.of("=ilike="));
 
     private final Set<String> aliases;
 

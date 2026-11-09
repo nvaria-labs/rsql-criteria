@@ -5,9 +5,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "movie")
@@ -23,6 +28,13 @@ public class Movie {
     private String genre;
     private String actor;
     private LocalDate releaseDate;
+    private boolean featured;
+
+    @ElementCollection
+    private Set<String> tags = new HashSet<>();
+
+    @ElementCollection
+    private List<Location> locations = new ArrayList<>();
 
     @ManyToOne
     private Director director;
@@ -38,6 +50,9 @@ public class Movie {
     }
 
     public void setReleaseDate(LocalDate releaseDate) { this.releaseDate = releaseDate; }
+    public void setFeatured(boolean featured) { this.featured = featured; }
+    public void setTags(String... tags) { this.tags = new HashSet<>(Set.of(tags)); }
+    public void setLocations(Location... locations) { this.locations = new ArrayList<>(List.of(locations)); }
 
     public Long getId() { return id; }
     public String getName() { return name; }

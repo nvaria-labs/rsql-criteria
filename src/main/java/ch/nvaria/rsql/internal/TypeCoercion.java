@@ -3,9 +3,16 @@ package ch.nvaria.rsql.internal;
 import ch.nvaria.rsql.RsqlParseException;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -31,24 +38,68 @@ final class TypeCoercion {
         Map.entry(Float.class,          Float::parseFloat),
         Map.entry(float.class,          Float::parseFloat),
         Map.entry(BigDecimal.class,     BigDecimal::new),
-        Map.entry(Boolean.class,        Boolean::parseBoolean),
-        Map.entry(boolean.class,        Boolean::parseBoolean),
+        Map.entry(Boolean.class,        TypeCoercion::parseBoolean),
+        Map.entry(boolean.class,        TypeCoercion::parseBoolean),
         Map.entry(OffsetDateTime.class, OffsetDateTime::parse),
         Map.entry(LocalDate.class,      LocalDate::parse),
         Map.entry(LocalDateTime.class,  LocalDateTime::parse),
-        Map.entry(UUID.class,           UUID::fromString)
+        Map.entry(UUID.class,           UUID::fromString),
+        Map.entry(Short.class,          Short::parseShort),
+        Map.entry(short.class,          Short::parseShort),
+        Map.entry(Byte.class,           Byte::parseByte),
+        Map.entry(byte.class,           Byte::parseByte),
+        Map.entry(BigInteger.class,     BigInteger::new),
+        Map.entry(Character.class,      TypeCoercion::parseCharacter),
+        Map.entry(char.class,           TypeCoercion::parseCharacter),
+        Map.entry(Instant.class,        Instant::parse),
+        Map.entry(ZonedDateTime.class,  ZonedDateTime::parse),
+        Map.entry(OffsetTime.class,     OffsetTime::parse),
+        Map.entry(LocalTime.class,      LocalTime::parse),
+        Map.entry(Year.class,           Year::parse),
+        Map.entry(YearMonth.class,      YearMonth::parse)
     );
+
+    /**
+     * The constant named {@code raw}: an exact match, otherwise the only one whose name matches
+     * ignoring case. Two constants that differ only in case make the case-insensitive form
+     * ambiguous, so it is rejected.
+     */
+    private static Enum<?> enumConstant(Class<? extends Enum<?>> type, String raw) {
+        Enum<?> match = null;
+        for (Enum<?> constant : type.getEnumConstants()) {
+            if (constant.name().equals(raw)) return constant;
+            if (constant.name().equalsIgnoreCase(raw)) {
+                if (match != null) throw new IllegalArgumentException("ambiguous: " + raw);
+                match = constant;
+            }
+        }
+        if (match == null) throw new IllegalArgumentException("no constant " + raw);
+        return match;
+    }
+
+    /** Exactly one character. */
+    private static Character parseCharacter(String raw) {
+        if (raw.length() != 1) throw new IllegalArgumentException("not a single character: " + raw);
+        return raw.charAt(0);
+    }
+
+    /** Strict: only {@code true} / {@code false} (any case), unlike {@link Boolean#parseBoolean}. */
+    private static Boolean parseBoolean(String raw) {
+        if (raw.equalsIgnoreCase("true")) return Boolean.TRUE;
+        if (raw.equalsIgnoreCase("false")) return Boolean.FALSE;
+        throw new IllegalArgumentException("not a boolean: " + raw);
+    }
 
     @SuppressWarnings("unchecked")
     static Object coerce(String raw, Class<?> type) {
         Function<String, Object> parser = COERCERS.get(type);
         try {
             if (parser != null)  return parser.apply(raw);
-            if (type.isEnum())   return Enum.valueOf((Class<Enum>) type, raw);
+            if (type.isEnum())   return enumConstant((Class<? extends Enum<?>>) type, raw);
         } catch (Exception e) {
             throw new RsqlParseException("Cannot coerce '" + raw + "' to " + type.getSimpleName(), e);
         }
-        throw new RsqlParseException("Unsupported field type for coercion: " + type.getName());
+        throw new RsqlParseException("Fields of type " + type.getSimpleName() + " cannot be compared to a value");
     }
 
     // ISO-8601 date/time fragments. Classification is by *shape* only — the value is

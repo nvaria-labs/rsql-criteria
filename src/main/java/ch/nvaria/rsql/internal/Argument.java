@@ -41,6 +41,11 @@ record Argument(String raw, boolean quoted) {
         return !quoted && raw.equalsIgnoreCase("null");
     }
 
+    /** The arguments that are not the {@code null} keyword, in order. */
+    static List<Argument> values(List<Argument> args) {
+        return args.stream().filter(a -> !a.isNull()).toList();
+    }
+
     /** Whether the argument contains an unescaped {@code *}. */
     boolean hasWildcard() {
         for (int i = 0; i < raw.length(); i++) {
