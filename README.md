@@ -63,6 +63,11 @@ ProblemDetail badFilter(RsqlParseException e) {
 }
 ```
 
+Complete examples with paging, sorting and error handling:
+
+- [Cookbook: Spring Boot 4](COOKBOOK-SPRING-BOOT.md), with Spring Data JPA
+- [Cookbook: WildFly](COOKBOOK-WILDFLY.md), with Jakarta REST
+
 ## Syntax
 
 | Operator | Meaning | Example |
