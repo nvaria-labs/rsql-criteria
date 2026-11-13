@@ -1,5 +1,7 @@
 name: Build gradle jar
 
+# Anyone who can push a matching tag can publish a signed release:
+# protect v* (and release) tags in the repository settings.
 on:
   push:
     tags:
@@ -11,36 +13,69 @@ jobs:
     name: Build jar
     runs-on: ubuntu-latest
     container:
-      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
+      # Pinned by digest, which also pins the Gradle that the steps use (gradle, not ./gradlew:
+      # no wrapper download per job). Update the digest when the image is rebuilt
+      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest@sha256:af64c5d732fc196c89b2f2f3c599b85eccd2d636a1a00d12ef997a661bccd82b
       credentials:
         username: ${{ secrets.DOCKERUSER }}
         password: ${{ secrets.DOCKERPW }}
     env:
       RUNNER_TOOL_CACHE: /toolcache
-      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE }}
+      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE  }}
       NEXUS_MVN_SNAPSHOTS: ${{ vars.NEXUS_MVN_SNAPSHOTS }}
       NEXUS_USER: ${{ secrets.DOCKERUSER }}
       NEXUS_PW: ${{ secrets.DOCKERPW }}
-      # Signs every publication (nexus and Maven Central); without the key builds stay unsigned
-      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY_NVARIA_OSS }}
-      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE_NVARIA_OSS }}
     steps:
-      - uses: actions/checkout@v7
+      # Pinned to the commit of actions/checkout v7.0.1. This job never pushes,
+      # so the token is not kept in .git/config for the following steps.
+      # Full history, so the guard below can check that the tag is on main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           token: ${{ secrets.PAT }}
+          persist-credentials: false
+          fetch-depth: 0
+      # A tag can also be created in the Gitea UI, the API or by git push, bypassing the
+      # trigger-release workflow. Release only release versions from main, whatever created
+      # the tag. The release plugin pushes main and the tag together (git push --follow-tags).
+      - name: Check release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "The tagged commit $(git rev-parse --short HEAD) is not on main"
+            exit 1
+          fi
+          version=$(sed -n 's/^version=//p' version.properties)
+          if [[ -z "$version" || "$version" == *SNAPSHOT* ]]; then
+            echo "version.properties holds '$version', which is not a release version"
+            exit 1
+          fi
+          tag="${GITHUB_REF_NAME:-${GITHUB_REF#refs/tags/}}"
+          if [[ "$tag" == v* && "$tag" != "v$version" ]]; then
+            echo "Tag $tag does not match the version $version in version.properties"
+            exit 1
+          fi
+          echo "Releasing $version from tag $tag"
+      # Build and tests run without the signing key: it is only passed to the publish step
       - name: Build with Gradle
         run: gradle build --no-daemon
+      # Signs every publication (nexus and Maven Central); without the key builds stay unsigned
       # Nexus never accepts the same release version twice. Not failing the job here lets a
       # re-run of this workflow retry only the Central upload (e.g. after a token problem).
       - name: Publish to nexus
         continue-on-error: true
+        env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY_NVARIA_OSS }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE_NVARIA_OSS }}
         run: gradle publishMavenPublicationToMaven-releaseRepository --no-daemon
       # Uploads and validates the deployment; it goes live after "Publish" is clicked
       # on https://central.sonatype.com/publishing/deployments
-      # Off unless the repository variable MAVEN_CENTRAL_ENABLED is 'true'
+      # Off unless the repository/organization variable MAVEN_CENTRAL_ENABLED is 'true'
       - name: Publish to Maven Central
         if: ${{ vars.MAVEN_CENTRAL_ENABLED == 'true' }}
         env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY_NVARIA_OSS }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE_NVARIA_OSS }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         run: gradle publishToMavenCentral --no-daemon

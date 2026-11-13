@@ -6,21 +6,27 @@ on:
 
 jobs:
   build:
+
     name: Build jar
     runs-on: ubuntu-latest
     container:
-      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
+      # Pinned by digest, which also pins the Gradle that the steps use (gradle, not ./gradlew:
+      # no wrapper download per job). Update the digest when the image is rebuilt
+      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest@sha256:af64c5d732fc196c89b2f2f3c599b85eccd2d636a1a00d12ef997a661bccd82b
       credentials:
         username: ${{ secrets.DOCKERUSER }}
         password: ${{ secrets.DOCKERPW }}
     env:
       RUNNER_TOOL_CACHE: /toolcache
-      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE }}
+      NEXUS_MVN_RELEASE: ${{ vars.NEXUS_MVN_RELEASE  }}
       NEXUS_MVN_SNAPSHOTS: ${{ vars.NEXUS_MVN_SNAPSHOTS }}
       NEXUS_USER: ${{ secrets.DOCKERUSER }}
       NEXUS_PW: ${{ secrets.DOCKERPW }}
     steps:
-      - uses: actions/checkout@v7
+      # Pinned to the commit of actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Build with Gradle
         run: gradle build --no-daemon
       # Snapshots stay unsigned: no signing key in this workflow
