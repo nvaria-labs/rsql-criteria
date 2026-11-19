@@ -12,7 +12,7 @@ jobs:
     container:
       # Pinned by digest, which also pins the Gradle that the steps use (gradle, not ./gradlew:
       # no wrapper download per job). Update the digest when the image is rebuilt
-      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest@sha256:af64c5d732fc196c89b2f2f3c599b85eccd2d636a1a00d12ef997a661bccd82b
+      image: registry.nvaria.cloud/ubuntu-act-jdk25:latest
       credentials:
         username: ${{ secrets.DOCKERUSER }}
         password: ${{ secrets.DOCKERPW }}
